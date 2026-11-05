@@ -64,24 +64,86 @@ def _restart_compact(Hp, Hs, perm, k, tab, pivH, colsig, P, piv, slot_col, idx, 
         for s in range(ns):
             P[j, rw + s] = colsig[c, s]
         j += 1
-    for rho in range(rank):
-        q = pivH[rho]
-        sw = rho >> 6
-        sb = np.uint64(1) << np.uint64(rho & 63)
-        for w in range(nwh):
-            word = Hs[rho, w]
-            base = w << 6
-            while word != 0:
-                lowbit = word & (np.uint64(0) - word)
-                f = base + int(_popcount_u64(lowbit - np.uint64(1)))
-                word ^= lowbit
-                if f == q:
-                    continue
-                jj = idx[f]
-                P[jj, sw] |= sb
-                for s in range(ns):
-                    P[jj, rw + s] ^= colsig[q, s]
+    _transpose_into_P(Hs, rank, idx, P, rw, nwh, n_cols)
+    _signatures_into_P(P, rank, pivH, colsig, rw, ns)
     return rank
+
+
+@njit(cache=True)
+def _transpose64(a):
+    """In-place transpose of a 64 x 64 bit block held as 64 uint64 words
+    (bit i of word k <-> bit k of word i, little-endian bit order)."""
+    j = 32
+    mask = np.uint64(0x00000000FFFFFFFF)
+    while j > 0:
+        uj = np.uint64(j)
+        k = 0
+        while k < 64:
+            if (k & j) == 0:
+                t = ((a[k] >> uj) ^ a[k + j]) & mask
+                a[k] ^= t << uj
+                a[k + j] ^= t
+            k += 1
+        j >>= 1
+        mask ^= mask << np.uint64(j)
+
+
+@njit(cache=True)
+def _transpose_into_P(Hs, rank, idx, P, rw, nwh, n_cols):
+    """P[idx[f], slot word] = transposed 64 x 64 blocks of the reduced check matrix:
+    bit rho of row idx[f] is set iff H row rho contains free column f. One write
+    per (free column, 64 pivot rows) instead of one scattered write per set bit."""
+    a = np.empty(64, dtype=np.uint64)
+    for sw in range(rw):
+        r0 = sw << 6
+        nr = min(64, rank - r0)
+        for w in range(nwh):
+            any_set = np.uint64(0)
+            for i in range(64):
+                v = Hs[r0 + i, w] if i < nr else np.uint64(0)
+                a[i] = v
+                any_set |= v
+            if any_set == 0:
+                continue
+            _transpose64(a)
+            base = w << 6
+            for b in range(64):
+                f = base + b
+                if f >= n_cols:
+                    break
+                jj = idx[f]
+                if jj >= 0 and a[b] != 0:
+                    P[jj, sw] = a[b]
+
+
+@njit(cache=True)
+def _signatures_into_P(P, rank, pivH, colsig, rw, ns):
+    """Verification words: P[j, rw+s] ^= XOR of colsig[pivot column of rho] over the
+    slots rho set in row j, through per-byte tables of the 256 combinations of
+    8 consecutive slots (Method of Four Russians)."""
+    nbytes = (rank + 7) >> 3
+    T = np.zeros((nbytes, 256, ns), dtype=np.uint64)
+    for t in range(nbytes):
+        for bit in range(8):
+            rho = (t << 3) + bit
+            if rho >= rank:
+                break
+            step = 1 << bit
+            for v in range(step, 2 * step):
+                for s in range(ns):
+                    T[t, v, s] = T[t, v - step, s] ^ colsig[pivH[rho], s]
+    m = P.shape[0]
+    for j in range(m):
+        for w in range(rw):
+            word = P[j, w]
+            if word == 0:
+                continue
+            for q in range(8):
+                v = int((word >> np.uint64(q << 3)) & np.uint64(0xFF))
+                if v != 0:
+                    t = (w << 3) + q
+                    for s in range(ns):
+                        P[j, rw + s] ^= T[t, v, s]
 
 
 @njit(cache=True)
