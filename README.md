@@ -6,17 +6,13 @@ the lightest ones it finds, so it gives **upper bounds on the code distance and
 on the circuit-level distance**, together with an explicit, verified witness for
 every bound.
 
-**Sisyphus is a hill-climbing algorithm**, and the name says so: each search *treks*
-across the space of information sets, climbing step by step toward lighter
-codewords, guided by column weights it learns from the low-weight codewords it has
-already seen. When a climb stalls, it partially forgets what it learned and
-restarts, as in iterated local search, and many independent climbs run in
-parallel.
-
-Each step of the climb is a step of randomized **information-set decoding
-(ISD)**: Sisyphus moves between information sets by single column swaps
-(Canteaut–Chabaud) and reads candidate codewords off each one with the methods of
-Prange, Lee–Brickell and Stern. It is written in Python with
+Sisyphus is a **hill-climbing variant of information-set decoding (ISD)**. Each
+search moves between information sets by single column swaps (Canteaut–Chabaud),
+reads candidate codewords off each one with the methods of Prange, Lee–Brickell
+and Stern, and climbs toward lighter codewords, guided by column weights it learns
+from the low-weight codewords it has already seen. When a climb stalls, it
+partially forgets what it learned and restarts, as in iterated local search, and
+many independent climbs run in parallel. It is written in Python with
 [Numba](https://numba.pydata.org/)-compiled bit-packed GF(2) kernels.
 
 Sisyphus builds directly on two existing tools for computing the distance of quantum
