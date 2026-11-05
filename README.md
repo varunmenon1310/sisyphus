@@ -64,7 +64,8 @@ Highlights (details in [Benchmarks](#benchmarks-and-comparisons)):
 10. [Repository layout](#repository-layout)
 11. [Citing](#citing)
 12. [References](#references)
-13. [License](#license)
+13. [Disclosure](#disclosure)
+14. [License](#license)
 
 ---
 
@@ -634,7 +635,7 @@ distance-finding paper of Webster, Jacob and Higgott:
 ```bibtex
 @software{sisyphus,
   title   = {{Sisyphus}: fast randomized distance search for quantum codes and circuits},
-  author  = {{Sisyphus developers}},
+  author  = {Menon, Varun},
   year    = {2026},
   url     = {https://github.com/varunmenon1310/sisyphus}
 }
@@ -719,6 +720,11 @@ Codes used in the benchmarks:
 15. <a id="ref-15"></a>S. Bravyi, A. W. Cross, J. M. Gambetta, D. Maslov, P. Rall and T. J. Yoder,
     "High-threshold and low-overhead fault-tolerant quantum memory", *Nature*
     627, 778–782 (2024). Bivariate bicycle codes.
+
+## Disclosure
+
+Part of this package was developed while the author was an employee at Google
+Research.
 
 ## License
 
