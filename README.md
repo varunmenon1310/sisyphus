@@ -72,7 +72,7 @@ Highlights (details in [Benchmarks](#benchmarks-and-comparisons)):
 
 ```bash
 git clone https://github.com/varunmenon1310/sisyphus.git
-cd Sisyphus
+cd sisyphus
 pip install -e .            # numpy, numba, scipy
 pip install -e ".[circuits]"  # adds stim, for circuit-level instances
 ```
@@ -494,14 +494,6 @@ with default parameters unless noted.
 | [[4608,2308,≤20]] APM, Z side | 20 | 783, 1157 s (2 seeds) | **139, 591 s** |
 | [[4608,2308,≤20]] APM, X side | 20 | 1 of 3 seeds in 1800 s (102 s) | 1 of 3 seeds in 1800 s (1008 s) |
 
-- **Small and medium codes** (up to a few thousand qubits): both tools find the
-  distance in well under a second. dist-m4ri is faster below 0.1 s, where Sisyphus's
-  time is dominated by starting its worker processes.
-- **Large codes**: on the [[4608,2308,≤20]] code Sisyphus is 2–5× faster on the Z
-  side, where the minimum-weight logicals are concentrated on few blocks and the
-  learned column weights pay off. The X side is a tie: about 25 core-hours per
-  weight-20 hit for both tools.
-
 ### Circuit-level instances
 
 The circuits are the Stim circuits of the dist-m4ri benchmark set: bivariate
@@ -530,22 +522,20 @@ whole call, including its setup (elimination, starting worker processes).
 | [[360,12,24]] SI1000 X | 4,500 × 43,560 | 23 | 41 / 192 / 482 s | **3.9 / 3.9 / 7.7 s** (finds **22**) | **49×** |
 | [[360,12,24]] SI1000 Z | 4,500 × 43,560 | 23 | 139 / 195 / 291 s | **3.9 / 3.9 / 3.9 s** | **51×** |
 
-Large circuit (16 threads vs 16 workers, separate runs):
+Large circuits (16 threads vs 16 workers):
 
 | instance | reduced size | dist-m4ri | Sisyphus |
 |---|---|---|---|
 | [[756,16,34]] SI1000 X, 34 rounds | 13,230 × 129,276 | 54 at 72 s; 50 at 238–553 s; best 49 in 1800 s | **47–49 at ~80 s; 39 at ~82 s; 33 at 199 s** |
+| [[4608,2308,≤20]] APM, one round, Z / X | 2,304 × 29,952 | 484–505 after 1 h (default and `pairs=12`) | **22 within 120 s** (Z: 1 of 2 seeds, X: 2 of 2) |
+| [[2232,1120,16]] two-block group-algebra code, one round, Z: time to weight ≤ 14 (4 seeds, 15 min each) | 1,116 × 14,508 | 0 of 4 (best 15, 15, 16, 16; `pairs=12`) | **4 of 4: 33 / 67 / 497 s** |
+| same circuit, lightest found in hour-long runs, Z / X | 1,116 × 14,508 | **13** / **15** | 14 / 16 |
 
-- **Small circuits** (up to about 10⁴ faults): both tools reach every published
-  value in well under a second. dist-m4ri's search is faster in absolute terms
-  (0.00–0.17 s vs 0.08–0.48 s); Sisyphus's time there is mostly fixed setup cost.
-- **Medium circuits** (2.7k–4.5k detectors, 26k–44k faults): Sisyphus reaches the
-  published distance **3–51× faster at the median** on four of the five
-  instances and ties on the fifth. Its run-to-run spread is also much smaller
-  (bb360 X: 3.9–7.7 s vs 41–482 s).
-- **Large circuits**: on the 34-round [[756,16,34]] circuit Sisyphus finds lower
-  weights sooner: 47–49 in about 80 s, then 39 and 33, where dist-m4ri's best
-  in 30 minutes is 49.
+The two one-round circuits were generated for this comparison: a single noisy
+round of syndrome extraction with a greedy edge-coloured CNOT schedule and
+uniform circuit-level noise. They are much harder for both tools than multi-round
+memory experiments, because their models have about 13 faults per detector, so a
+low-weight fault set has only a small chance of avoiding a random information set.
 
 ### Bounds tighter than the best published
 
@@ -571,16 +561,29 @@ python benchmarks/verify_witnesses.py /path/to/dist-m4ri/benchmark
 At the code level, no published bound was improved. Sisyphus reaches the published
 weight 20 on [[4608,2308,≤20]] and 34 on [[756,16,≤34]].
 
-### Where dist-m4ri is still ahead
+### Summary
 
-- Small instances (below about 10⁴ columns), where both finish in under a second
-  but Sisyphus's fixed setup cost (0.1–0.5 s) dominates.
-- dist-m4ri also computes **lower bounds** (its connected-cluster algorithm,
-  `method=2`), and with them exact distances on small instances. Sisyphus only
-  gives upper bounds.
-- One-round circuits of very large codes: on a one-round syndrome-extraction
-  circuit of a [[2232,1120,16]] code, dist-m4ri reached 13 (Z basis) where
-  Sisyphus's best run reached 14.
+- **Small instances** (codes up to a few thousand qubits, circuits up to about
+  10⁴ faults): both tools reach the known distance in well under a second.
+  dist-m4ri is faster in absolute terms (0.00–0.17 s vs 0.08–0.48 s); Sisyphus's
+  time there is mostly fixed setup cost (starting worker processes, elimination).
+- **Medium circuits** (2.7k–4.5k detectors, 26k–44k faults): Sisyphus reaches the
+  published distance **3–51× faster at the median** on four of the five
+  instances and ties on the fifth, with a much smaller run-to-run spread
+  (bb360 X: 3.9–7.7 s vs 41–482 s).
+- **Large codes**: on [[4608,2308,≤20]] Sisyphus is 2–5× faster on the Z side,
+  where the minimum-weight logicals are concentrated on few blocks and the
+  learned column weights pay off; the X side is a tie (about 25 core-hours per
+  weight-20 hit for both).
+- **Large circuits**: on the 34-round [[756,16,34]] circuit Sisyphus finds lower
+  weights sooner (33 vs 49). On the one-round circuits Sisyphus reaches low
+  weights much faster ([[4608,2308]]: 22 vs 484; [[2232,1120]]: weight 14 in
+  4 of 4 runs within 15 minutes vs 0 of 4), but in hour-long runs dist-m4ri has
+  found lighter fault sets on [[2232,1120]] (13 vs 14 in the Z basis, 15 vs 16
+  in the X basis).
+- **Lower bounds**: dist-m4ri also certifies lower bounds with its
+  connected-cluster algorithm (`method=2`), and with them exact distances on small
+  instances. Sisyphus gives upper bounds only.
 
 ---
 
@@ -598,7 +601,7 @@ weight 20 on [[4608,2308,≤20]] and 34 on [[756,16,≤34]].
 ## Repository layout
 
 ```
-Sisyphus/
+sisyphus/
 ├── sisyphus_qec/
 │   ├── search.py         public entry points (css_distance, side_distance) and the
 │   │                     parallel island search (process pool, scheduling, early stop)
