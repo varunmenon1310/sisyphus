@@ -7,13 +7,15 @@ on the circuit-level distance**, together with an explicit, verified witness for
 every bound.
 
 Sisyphus is a **hill-climbing variant of information-set decoding (ISD)**
-[[1](#ref-1)–[4](#ref-4), [11](#ref-11)]. Each search moves between neighbouring information sets by swapping a
-single column [[4](#ref-4)], reads candidate codewords off each one (single rows [[1](#ref-1)], sums
-of a few rows [[2](#ref-2)], and pairs of rows found by a collision search [[3](#ref-3)]), and climbs
-toward lighter codewords, guided by column weights it learns from the low-weight
-codewords it has already seen. When a climb stalls, it partially forgets what it
-learned and restarts, as in iterated local search [[12](#ref-12)], and many independent climbs
-run in parallel [[13](#ref-13)]. It is written in Python with
+[[1](#ref-1)–[4](#ref-4), [11](#ref-11)]. It combines several algorithmic
+improvements of Prange's algorithm [[1](#ref-1)] (sums of a few rows [[2](#ref-2)], a collision
+search for such sums [[3](#ref-3)], and moving between neighbouring information sets by
+single column swaps [[4](#ref-4)]) and adds **adaptive learning of the information sets**:
+column weights learned from the low-weight codewords already found decide which
+columns enter and leave the information set, so each search climbs toward lighter
+codewords. When a climb stalls, it partially forgets what it learned and restarts,
+as in iterated local search [[12](#ref-12)], and many independent climbs run in parallel
+[[13](#ref-13)]. It is written in Python with
 [Numba](https://numba.pydata.org/)-compiled bit-packed GF(2) kernels.
 
 Sisyphus builds directly on two existing tools for computing the distance of quantum
