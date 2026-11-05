@@ -13,6 +13,22 @@ weights learned from the low-weight codewords seen so far. It is written in Pyth
 with [Numba](https://numba.pydata.org/)-compiled bit-packed GF(2) kernels and runs
 many independent searches in parallel.
 
+Sisyphus builds directly on two existing tools for computing the distance of quantum
+codes, and we gratefully acknowledge both:
+[**QDistRnd**](https://github.com/QEC-pages/QDistRnd) (Pryadko, Shabashov and
+Kozin), the GAP package that established randomized information-set search as a
+practical method for quantum codes, and
+[**dist-m4ri**](https://github.com/QEC-pages/dist-m4ri) (Pryadko and Zeng), its
+fast C successor for codes and circuit-level detector error models, whose
+benchmark set and exact detector-error-model reduction we use for all
+circuit-level comparisons. The survey and benchmarks of Webster, Jacob and
+Higgott, *Distance-Finding Algorithms for Quantum Codes and Circuits*, were a
+further guide.
+
+> **If you use Sisyphus in published work, please cite Sisyphus together with the
+> QDistRnd paper and the distance-finding paper of Webster, Jacob and Higgott**
+> (BibTeX in [Citing](#citing)).
+
 Highlights (details in [Benchmarks](#benchmarks-and-comparisons)):
 
 - On large circuit-level instances Sisyphus improves several **best published bounds**
@@ -43,7 +59,9 @@ Highlights (details in [Benchmarks](#benchmarks-and-comparisons)):
 8. [Benchmarks and comparisons](#benchmarks-and-comparisons)
 9. [Limitations](#limitations)
 10. [Repository layout](#repository-layout)
-11. [Citing and license](#citing-and-license)
+11. [Citing](#citing)
+12. [References](#references)
+13. [License](#license)
 
 ---
 
@@ -122,11 +140,7 @@ minimum weight of `c` with `H c = 0` and `L c ≠ 0`. It is usually smaller than
 the code distance, because some single faults (for example "hook" errors on
 syndrome-extraction ancillas) spread to several data qubits.
 
-**Metacheck distance.** For single-shot codes with a metacheck matrix `M`,
-`metacheck_distance(M, H)` finds the lightest syndrome that passes all
-metachecks but is not the syndrome of any error.
-
-All three are the same problem: **find the minimum weight of a vector in the
+Both are the same problem: **find the minimum weight of a vector in the
 kernel of a binary matrix that is not in a given subspace of trivial vectors**.
 This problem is NP-hard in general, so practical tools search for light
 solutions. Sisyphus never certifies that nothing lighter exists. Every reported
@@ -334,7 +348,7 @@ In words:
 ## API
 
 ```python
-from sisyphus_qec import css_distance, side_distance, metacheck_distance
+from sisyphus_qec import css_distance, side_distance
 from sisyphus_qec import dem_to_matrices, lift_columns, verify_fault_set
 ```
 
@@ -355,10 +369,6 @@ X logicals of a CSS code call `side_distance(Hz, Hx)`, for Z logicals
 `side_distance(H, None, pair_rows=L)`: `pair_rows` is any set of vectors such
 that `c` is nontrivial exactly when it has odd overlap with one of them (for a
 DEM, the observable matrix).
-
-### `metacheck_distance(M, H, ...)`
-
-Lightest syndrome `s` with `M s = 0` that is not in the image of `H`.
 
 ### `SideResult`
 
@@ -403,8 +413,8 @@ reduced circuit model of 13,230 × 129,276 needs about 1.7 GB as a dense
 > changes.
 
 The options you normally set are the **run options**. The **search parameters**
-can be passed as keyword arguments to `css_distance`, `side_distance` and
-`metacheck_distance`; they are listed for completeness.
+can be passed as keyword arguments to `css_distance` and `side_distance`; they
+are listed for completeness.
 
 ### Run options
 
@@ -422,7 +432,6 @@ can be passed as keyword arguments to `css_distance`, `side_distance` and
 | `collect_codewords` | `True` | keep the set of minimum-weight solutions (otherwise one). |
 | `basis` | `"both"` | `css_distance` only: `"both"`, `"z"` or `"x"`. |
 | `compact` | `None` | `None` / `True`: compact `[I | P]` storage. `False`: full-width rows (same search, slower). |
-| `theta_prior` | `None` | optional initial column weights for the learning chains (length `n`). A warm start; leave unset for unbiased searches and benchmarks. |
 
 ### Search parameters
 
@@ -456,9 +465,7 @@ can be passed as keyword arguments to `css_distance`, `side_distance` and
 
 ## Benchmarks and comparisons
 
-All runs use cold starts: no warm start and no information from earlier runs or
-from known codewords. They stop at the known or published distance (`cutoff`) unless
-stated otherwise. The two tools run on the same machine type (Intel Xeon
+Runs stop at the known or published distance (`cutoff`) unless stated otherwise. The two tools run on the same machine type (Intel Xeon
 Platinum 8268), **16 threads for dist-m4ri vs 16 worker processes for Sisyphus**; the
 small and medium circuit instances were run in the same job.
 Times are min / median / max over 3 seeds. Both tools are randomized, so the spread
@@ -539,7 +546,7 @@ Large circuit (16 threads vs 16 workers, separate runs):
 
 ### Bounds tighter than the best published
 
-All found by Sisyphus in cold runs. Each witness is in
+All found by Sisyphus. Each witness is in
 [`benchmarks/witnesses/`](benchmarks/witnesses/) as a list of faults (the
 detectors and observables each fault flips) and can be checked against the
 original circuits with Stim:
@@ -570,7 +577,7 @@ weight 20 on [[4608,2308,≤20]] and 34 on [[756,16,≤34]].
   gives upper bounds.
 - One-round circuits of very large codes: on a one-round syndrome-extraction
   circuit of a [[2232,1120,16]] code, dist-m4ri reached 13 (Z basis) where
-  Sisyphus's best cold run reached 14.
+  Sisyphus's best run reached 14.
 
 ---
 
@@ -590,30 +597,123 @@ weight 20 on [[4608,2308,≤20]] and 34 on [[756,16,≤34]].
 ```
 Sisyphus/
 ├── sisyphus_qec/
-│   ├── finder.py        search kernel and public API
-│   ├── compact.py       compact [I | P] chain (default)
-│   └── dem.py           detector error model helpers (Stim)
-├── examples/            code_distance.py, circuit_distance.py, codes.py
-├── tests/               pytest suite (known distances, brute force on random codes, a circuit)
+│   ├── search.py         public entry points (css_distance, side_distance) and the
+│   │                     parallel island search (process pool, scheduling, early stop)
+│   ├── setup.py          per-side setup: packed check matrix, verification parities,
+│   │                     starting basis
+│   ├── chain_compact.py  search chain on the compact [I | P] form (default)
+│   ├── chain_full.py     search chain on full-width rows (compact=False)
+│   ├── extraction.py     candidate extraction (Prange, Lee–Brickell, Stern collisions)
+│   │                     and greedy weight reduction
+│   ├── windows.py        detector time windows for circuit-level models
+│   ├── gf2.py            bit-packed GF(2) linear algebra (M4RI row reduction, kernels)
+│   ├── params.py         default search parameters
+│   ├── results.py        result types
+│   └── dem.py            Stim detector error model helpers
+├── examples/             code_distance.py, circuit_distance.py, codes.py
+├── tests/                pytest suite (known distances, brute force on random codes,
+│                         a circuit)
 └── benchmarks/
-    ├── witnesses/       fault sets behind the new circuit-level bounds
+    ├── witnesses/        fault sets behind the new circuit-level bounds
     └── verify_witnesses.py
 ```
 
 Run the tests with `python -m pytest tests/`.
 
-## Citing and license
+## Citing
 
-If you use Sisyphus in published work, please cite this repository. Sisyphus is
-released under the Apache License 2.0 (see [LICENSE](LICENSE)).
+If you use Sisyphus in published work, please cite Sisyphus, the QDistRnd paper, and the
+distance-finding paper of Webster, Jacob and Higgott:
 
-References for the methods it builds on:
+```bibtex
+@software{sisyphus,
+  title   = {{Sisyphus}: fast randomized distance search for quantum codes and circuits},
+  author  = {{Sisyphus developers}},
+  year    = {2026},
+  url     = {https://github.com/varunmenon1310/sisyphus}
+}
 
-- E. Prange, "The use of information sets in decoding cyclic codes", *IRE Trans. Inf. Theory* 8 (1962).
-- P. J. Lee and E. F. Brickell, "An observation on the security of McEliece's public-key cryptosystem", EUROCRYPT 1988.
-- J. Stern, "A method for finding codewords of small weight", *Coding Theory and Applications* (1989).
-- A. Canteaut and F. Chabaud, "A new algorithm for finding minimum-weight words in a linear code", *IEEE Trans. Inf. Theory* 44 (1998).
-- H. R. Lourenço, O. C. Martin and T. Stützle, "Iterated local search", *Handbook of Metaheuristics* (2003).
-- M. Albrecht and G. Bard, "The M4RI library" (Method of Four Russians over GF(2)).
-- L. P. Pryadko and W. Zeng, dist-m4ri, github.com/QEC-pages/dist-m4ri.
-- S. Bravyi et al., "High-threshold and low-overhead fault-tolerant quantum memory", *Nature* 627 (2024) (bivariate bicycle codes).
+@article{qdistrnd,
+  title   = {{QDistRnd}: A {GAP} package for computing the distance of quantum
+             error-correcting codes},
+  author  = {Pryadko, Leonid P. and Shabashov, Vadim A. and Kozin, Valerii K.},
+  journal = {Journal of Open Source Software},
+  volume  = {7},
+  number  = {71},
+  pages   = {4120},
+  year    = {2022},
+  doi     = {10.21105/joss.04120}
+}
+
+@article{webster2026distance,
+  title   = {Distance-Finding Algorithms for Quantum Codes and Circuits},
+  author  = {Webster, Mark and Jacob, Abraham and Higgott, Oscar},
+  journal = {arXiv preprint arXiv:2603.22532},
+  year    = {2026}
+}
+```
+
+## References
+
+Information-set decoding and low-weight codeword search:
+
+1. E. Prange, "The use of information sets in decoding cyclic codes", *IRE
+   Transactions on Information Theory* 8(5), S5–S9 (1962). Information sets;
+   reading codewords off a systematic generator matrix.
+2. P. J. Lee and E. F. Brickell, "An observation on the security of McEliece's
+   public-key cryptosystem", *EUROCRYPT 1988*, LNCS 330, 275–280 (1988). Sums of
+   several rows.
+3. J. Stern, "A method for finding codewords of small weight", *Coding Theory and
+   Applications*, LNCS 388, 106–113 (1989). Collision search on a subset of
+   redundant columns.
+4. A. Canteaut and F. Chabaud, "A new algorithm for finding minimum-weight words
+   in a linear code: application to McEliece's cryptosystem and to narrow-sense
+   BCH codes of length 511", *IEEE Transactions on Information Theory* 44(1),
+   367–378 (1998). Moving between information sets by single column swaps.
+
+Distance of quantum codes and circuits:
+
+5. L. P. Pryadko, V. A. Shabashov and V. K. Kozin, "QDistRnd: A GAP package for
+   computing the distance of quantum error-correcting codes", *Journal of Open
+   Source Software* 7(71), 4120 (2022).
+6. L. P. Pryadko and W. Zeng, dist-m4ri, https://github.com/QEC-pages/dist-m4ri.
+   Random-window information sets and connected-cluster search for codes and
+   detector error models; the circuit-level benchmark set used here.
+7. M. Webster, A. Jacob and O. Higgott, "Distance-Finding Algorithms for Quantum
+   Codes and Circuits", arXiv:2603.22532 (2026).
+8. C. Gidney, "Stim: a fast stabilizer circuit simulator", *Quantum* 5, 497
+   (2021). Detector error models.
+
+Linear algebra over GF(2):
+
+9. V. L. Arlazarov, E. A. Dinic, M. A. Kronrod and I. A. Faradzev, "On economical
+   construction of the transitive closure of an oriented graph", *Soviet
+   Mathematics Doklady* 11, 1209–1210 (1970). The Method of Four Russians.
+10. M. R. Albrecht, G. V. Bard and W. Hart, "Algorithm 898: Efficient
+    multiplication of dense matrices over GF(2)", *ACM Transactions on
+    Mathematical Software* 37(1), 9 (2010). The M4RI library.
+
+Search heuristics:
+
+11. H. H. Hoos and T. Stützle, *Stochastic Local Search: Foundations and
+    Applications*, Morgan Kaufmann (2004). Stochastic hill climbing with restarts.
+12. H. R. Lourenço, O. C. Martin and T. Stützle, "Iterated local search",
+    *Handbook of Metaheuristics*, 320–353 (2003). Perturbation and restart from a
+    local optimum.
+13. D. Whitley, S. Rana and R. B. Heckendorn, "The island model genetic
+    algorithm: on separability, population size and convergence", *Journal of
+    Computing and Information Technology* 7(1), 33–47 (1999). Independent
+    subpopulations in parallel.
+14. D. E. Goldberg and K. Deb, "A comparative analysis of selection schemes used
+    in genetic algorithms", *Foundations of Genetic Algorithms*, 69–93 (1991).
+    Tournament selection.
+
+Codes used in the benchmarks:
+
+15. S. Bravyi, A. W. Cross, J. M. Gambetta, D. Maslov, P. Rall and T. J. Yoder,
+    "High-threshold and low-overhead fault-tolerant quantum memory", *Nature*
+    627, 778–782 (2024). Bivariate bicycle codes.
+
+## License
+
+Sisyphus is released under the Apache License 2.0 (see [LICENSE](LICENSE)).

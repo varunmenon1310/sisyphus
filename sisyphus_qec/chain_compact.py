@@ -1,16 +1,16 @@
-"""Compact walker for distance_finder: every basis row is stored on the redundant
-columns only (the [I | P] systematic form), 2026-11-04.
+"""Compact search chain: every basis row is stored on the redundant
+columns only (the [I | P] systematic form).
 
 A walker's basis of ker(check) in reduced form has one row per information-set
 column (its pivot) with further 1s only on the r = rank(check) redundant columns.
-distance_finder.py stores every row at full width (n bits); here row i is
+The full-width chain (chain_full.py) stores every row at n bits; here row i is
     codeword_i = e_{piv[i]} + sum_{slot j set in P[i]} e_{slot_col[j]}
 with P[i] of r bits (plus the certification words), slot_col[j] the column held
 by slot j. Everything a shot does (swap batch, hashed read-off, descent, theta
 reinforcement) scales with the row length, so this is n/r times cheaper per shot
 and in memory: 4x on a rate-1/2 code, 10x on circuit DEMs (bb756: 207 words per
 row instead of 2020). The information set, the codewords found and the learning
-are the same as in distance_finder.py; a candidate codeword is (P-part XOR,
+are the same as in chain_full.py; a candidate codeword is (P-part XOR,
 set S of rows in the sum), weight = |S| + popcount(P-part).
 
 A pivot swap (row r evicts its pivot lambda, slot j_mu with P[r, j_mu] = 1
@@ -21,11 +21,13 @@ order and transpose its free columns into P (no kernel basis is ever built).
 
 Not supported in compact mode: mix_rate, greedy_kicks, lb_hash_p4 (ignored).
 """
+from __future__ import annotations
+
 import numpy as np
 from numba import njit
 
-from .finder import (_popcount_u64, _bit, _rref_m4ri_order, _xor_weight_row,
-                             M4RI_K, BIG_BASE)
+from .gf2 import _bit, _popcount_u64, _rref_m4ri_order, _xor_weight_row
+from .params import BIG_BASE, M4RI_K
 
 
 # ---------------------------------------------------------------- restart
@@ -102,7 +104,7 @@ def _row_stats_compact(P, rw, wt, is_log):
 @njit(cache=True)
 def _swap_batch_compact(P, piv, slot_col, wt, is_log, theta, rw, s, tourn, eps,
                         mu_list, u_rows, ws_rows, in_ws, tab, uc):
-    """s pivot swaps applied as one pass (see distance_finder._swap_batch).
+    """s pivot swaps applied as one pass (see chain_full._swap_batch).
     Entering choice: the set slot of the evicted row whose column has the
     lowest theta (uniform with probability eps). Correction vector of a swap:
     the evicted row with the entering slot bit cleared (rows keep that bit,
@@ -253,7 +255,7 @@ def _swap_batch_compact(P, piv, slot_col, wt, is_log, theta, rw, s, tourn, eps,
 def _readoff_hashed_compact(P, wt, is_log, rw, r_slots, M, R, L, n_windows,
                             light_idx, light_wt, shot_cw, shot_rows, pair_tmp,
                             keys, bstart, border, win, slot_cnt, wt_cnt):
-    """distance_finder._readoff_hashed on the compact basis. Sums of k rows weigh
+    """extraction._readoff_hashed on the compact basis. Sums of k rows weigh
     k + popcount of the XOR of their P parts. Writes the lightest candidate's
     P part and certification words to shot_cw and its rows to shot_rows;
     returns (weight, number of rows in the candidate, size of the light list)."""
@@ -575,11 +577,11 @@ def _run_island_compact(Hp, colsig, n_cols, nw, rank, swaps_per_shot, restart_in
                         migrate_interval, migrate_boost, cw_max, lb_M, greedy_passes,
                         stall_rounds, kick_rounds, kick_frac, kick_patience,
                         lb_hash_l, lb_hash_windows, lb_R, explorer_restart, theta_prior, stop):
-    """distance_finder._run_island on the compact representation. Hp: packed
+    """chain_full._run_island on the compact representation. Hp: packed
     check matrix (rows x nw), colsig: per-column signature words (n_cols x ns),
     rank = rank(Hp) = number of slots, m = n_cols - rank rows.
-    theta_prior (n_cols floats, all zero = none): initial priorities of the learners,
-    e.g. a large value on the support of a known light codeword (warm start, 2026-11-05).
+    theta_prior (n_cols floats, length 0 = none): initial column weights of the
+    learning chains (internal hook; the public API passes none).
     Returns (best_w, best_cw_full, cw_buf_full[:cnt], first_hit_round, rounds, best_round)."""
     np.random.seed(seed)
     W = etas.shape[0]
