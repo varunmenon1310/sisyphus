@@ -22,9 +22,9 @@ Highlights (details in [Benchmarks](#benchmarks-and-comparisons)):
   also gives 21 for the [[360,12,≤24]] circuit (published: ≤ 23), 16 for the
   double-gross [[288,12,18]] circuit (published: ≤ 18) and 10 for the gross
   [[144,12,12]] circuit with uniform noise (published: ≤ 11).
-- On medium-size circuit instances it reaches the published distance **5–50×
+- On medium-size circuit instances it reaches the published distance **3–51×
   faster** than [dist-m4ri](https://github.com/QEC-pages/dist-m4ri) at the median
-  (16 cores each).
+  (same job, 16 cores each), and ties on the remaining one.
 - On codes it matches or beats dist-m4ri: sub-second on everything up to
   [[2304,1156]], and 2–5× faster on one side of the hardest instance tested
   ([[4608,2308,≤20]]).
@@ -459,7 +459,8 @@ can be passed as keyword arguments to `css_distance`, `side_distance` and
 All runs use cold starts: no warm start and no information from earlier runs or
 from known codewords. They stop at the known or published distance (`cutoff`) unless
 stated otherwise. The two tools run on the same machine type (Intel Xeon
-Platinum 8268), **16 threads for dist-m4ri vs 16 worker processes for Sisyphus**.
+Platinum 8268), **16 threads for dist-m4ri vs 16 worker processes for Sisyphus**; the
+small and medium circuit instances were run in the same job.
 Times are min / median / max over 3 seeds. Both tools are randomized, so the spread
 comes from the random seed. Every witness of both tools is verified (circuits: on
 the full DEM).
@@ -499,21 +500,39 @@ the "Mitten" codes with two syndrome-extraction schedules each, and a toric-layo
 Each detector error model was reduced exactly to one basis, and the reduced
 sizes match those reported by dist-m4ri.
 
-| instance (reduced size) | published | dist-m4ri | Sisyphus |
-|---|---|---|---|
-| 21 small circuits up to 792 × 10,890 (bb72, bb90, bb108, gross, Mitten, torus) | exact or bracket | 0.00–0.35 s | 0.1–0.4 s |
-| double gross SI1000 X (2736 × 26,208) | [12, 18] | 2.4 / 2.7 / 12.7 s | 3.5 / 3.6 / 3.6 s |
-| double gross SI1000 Z | – | 72 / 103 / 137 s | **3.6 / 3.7 / 5.8 s** |
-| double gross uniform X | – | 8.5 / 17.8 / 23.2 s | **3.7 / 3.8 / 3.8 s** |
-| [[360,12,24]] SI1000 X (4500 × 43,560) | [12, 23] | 3.9 / 314 / 593 s | **6.1 / 6.1 / 12.4 s** |
-| [[360,12,24]] SI1000 Z | – | 56 / 226 / 400 s | **6.0 / 6.1 / 11.5 s** |
-| [[756,16,34]] SI1000 X, 34 rounds (13,230 × 129,276) | – (lightest reported: 55) | 54 at 72 s; 50 at 238–553 s; best 49 in 1800 s | **47–49 at ~80 s; 39 at ~82 s; 33 at 199 s** |
+Small and medium circuits: **both tools in the same job on the same node**, 3 seeds
+each, stopping at the published value (2026-11-05). dist-m4ri's time is its own
+search clock, which excludes reading and reducing the DEM file. Sisyphus's time is the
+whole call, including its setup (elimination, starting worker processes).
 
-- **Small circuits**: both tools reach every published value in well under a
-  second. dist-m4ri's absolute times are lower; Sisyphus's are dominated by
-  process start-up.
-- **Medium circuits**: Sisyphus reaches the published distance 5–50× faster at the
-  median on four of the five instances, and ties on the fifth.
+| instance | reduced size | stop at | dist-m4ri | Sisyphus | median speedup |
+|---|---|---|---|---|---|
+| bb72 SI1000 X / Z, uniform X | 252 × 2,232 | 6 | 0.00 s | 0.08 s | – |
+| bb90 SI1000 X / Z | 495 × 4,590 | 8 | 0.01 s | 0.15 s | – |
+| bb108 SI1000 X / Z | 594 × 5,508 | 8 | 0.01 s | 0.16 s | – |
+| torus200 X / Z | 300 × 4,800 | 8 | 0.01–0.09 s | 0.18–0.27 s | – |
+| Mitten 90–330, both schedules (10 circuits) | up to 792 × 10,890 | 4–9 | 0.00–0.17 s | 0.09–0.48 s | – |
+| gross SI1000 X / Z | 936 × 8,784 | 10 | 0.03–0.10 s | 0.21–0.23 s | – |
+| gross uniform X | 936 × 8,784 | 11 | 0.02–0.04 s | 0.27–0.30 s (finds **10**) | – |
+| double gross SI1000 X | 2,736 × 26,208 | 18 | 2.2 / 2.4 / 7.4 s | 2.6 / 2.7 / 2.8 s | 0.9× (tie) |
+| double gross uniform X | 2,736 × 26,208 | 18 | 7.2 / 8.9 / 40 s | **2.6 / 2.8 / 3.2 s** | **3.2×** |
+| double gross SI1000 Z | 2,736 × 26,208 | 18 | 59 / 71 / 81 s | **2.6 / 3.3 / 3.3 s** | **22×** |
+| [[360,12,24]] SI1000 X | 4,500 × 43,560 | 23 | 41 / 192 / 482 s | **3.9 / 3.9 / 7.7 s** (finds **22**) | **49×** |
+| [[360,12,24]] SI1000 Z | 4,500 × 43,560 | 23 | 139 / 195 / 291 s | **3.9 / 3.9 / 3.9 s** | **51×** |
+
+Large circuit (16 threads vs 16 workers, separate runs):
+
+| instance | reduced size | dist-m4ri | Sisyphus |
+|---|---|---|---|
+| [[756,16,34]] SI1000 X, 34 rounds | 13,230 × 129,276 | 54 at 72 s; 50 at 238–553 s; best 49 in 1800 s | **47–49 at ~80 s; 39 at ~82 s; 33 at 199 s** |
+
+- **Small circuits** (up to about 10⁴ faults): both tools reach every published
+  value in well under a second. dist-m4ri's search is faster in absolute terms
+  (0.00–0.17 s vs 0.08–0.48 s); Sisyphus's time there is mostly fixed setup cost.
+- **Medium circuits** (2.7k–4.5k detectors, 26k–44k faults): Sisyphus reaches the
+  published distance **3–51× faster at the median** on four of the five
+  instances and ties on the fifth. Its run-to-run spread is also much smaller
+  (bb360 X: 3.9–7.7 s vs 41–482 s).
 - **Large circuits**: on the 34-round [[756,16,34]] circuit Sisyphus finds lower
   weights sooner: 47–49 in about 80 s, then 39 and 33, where dist-m4ri's best
   in 30 minutes is 49.
@@ -544,7 +563,8 @@ weight 20 on [[4608,2308,≤20]] and 34 on [[756,16,≤34]].
 
 ### Where dist-m4ri is still ahead
 
-- Sub-second instances, where Sisyphus's process start-up (0.1–0.3 s) dominates.
+- Small instances (below about 10⁴ columns), where both finish in under a second
+  but Sisyphus's fixed setup cost (0.1–0.5 s) dominates.
 - dist-m4ri also computes **lower bounds** (its connected-cluster algorithm,
   `method=2`), and with them exact distances on small instances. Sisyphus only
   gives upper bounds.
