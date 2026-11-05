@@ -6,26 +6,25 @@ the lightest ones it finds, so it gives **upper bounds on the code distance and
 on the circuit-level distance**, together with an explicit, verified witness for
 every bound.
 
-Sisyphus is a **hill-climbing variant of information-set decoding (ISD)**. Each
-search moves between information sets by single column swaps (Canteaut–Chabaud),
-reads candidate codewords off each one with the methods of Prange, Lee–Brickell
-and Stern, and climbs toward lighter codewords, guided by column weights it learns
-from the low-weight codewords it has already seen. When a climb stalls, it
-partially forgets what it learned and restarts, as in iterated local search, and
-many independent climbs run in parallel. It is written in Python with
+Sisyphus is a **hill-climbing variant of information-set decoding (ISD)**
+[[1](#ref-1)–[4](#ref-4), [11](#ref-11)]. Each search moves between neighbouring information sets by swapping a
+single column [[4](#ref-4)], reads candidate codewords off each one (single rows [[1](#ref-1)], sums
+of a few rows [[2](#ref-2)], and pairs of rows found by a collision search [[3](#ref-3)]), and climbs
+toward lighter codewords, guided by column weights it learns from the low-weight
+codewords it has already seen. When a climb stalls, it partially forgets what it
+learned and restarts, as in iterated local search [[12](#ref-12)], and many independent climbs
+run in parallel [[13](#ref-13)]. It is written in Python with
 [Numba](https://numba.pydata.org/)-compiled bit-packed GF(2) kernels.
 
 Sisyphus builds directly on two existing tools for computing the distance of quantum
 codes, and we gratefully acknowledge both:
-[**QDistRnd**](https://github.com/QEC-pages/QDistRnd) (Pryadko, Shabashov and
-Kozin), the GAP package that established randomized information-set search as a
+[**QDistRnd**](https://github.com/QEC-pages/QDistRnd) [[5](#ref-5)], the GAP package that established randomized information-set search as a
 practical method for quantum codes, and
-[**dist-m4ri**](https://github.com/QEC-pages/dist-m4ri) (Pryadko and Zeng), its
+[**dist-m4ri**](https://github.com/QEC-pages/dist-m4ri) [[6](#ref-6)], its
 fast C successor for codes and circuit-level detector error models, whose
 benchmark set and exact detector-error-model reduction we use for all
-circuit-level comparisons. The survey and benchmarks of Webster, Jacob and
-Higgott, *Distance-Finding Algorithms for Quantum Codes and Circuits*, were a
-further guide.
+circuit-level comparisons. A recent survey and benchmark of distance-finding
+algorithms for quantum codes and circuits [[7](#ref-7)] was a further guide.
 
 > **If you use Sisyphus in published work, please cite Sisyphus together with the
 > QDistRnd paper and the distance-finding paper of Webster, Jacob and Higgott**
@@ -133,7 +132,7 @@ weight is the number of qubits it acts on. The X distance is the minimum weight
 of such a vector. The Z distance swaps the roles of `Hx` and `Hz`. The code
 distance is the smaller of the two.
 
-**Circuit-level distance.** A detector error model lists the possible faults
+**Circuit-level distance.** A detector error model [[8](#ref-8)] lists the possible faults
 of a noisy circuit and, for each one, the detectors and logical observables it
 flips. With one column per fault, write `H` for the detector matrix and `L` for
 the observable matrix. The circuit-level distance is the smallest number of
@@ -156,7 +155,7 @@ check independently.
 This section first recalls the standard ISD algorithms that Sisyphus builds on, then
 describes what Sisyphus adds. No prior knowledge of ISD is assumed.
 
-### Background 1: information sets and Prange's algorithm
+### Background 1: information sets
 
 Let `G` be a generator matrix of the code to be searched (for X logicals, a basis
 of the kernel of `Hz`), with `k` rows and `n` columns. Gaussian elimination brings
@@ -165,30 +164,30 @@ of the kernel of `Hz`), with `k` rows and `n` columns. Gaussian elimination brin
 systematic form then has a single 1 inside the information set and arbitrary
 entries on the remaining `n − k` **redundant columns**.
 
-The key observation (Prange, 1962): if a low-weight codeword happens to have
+The key observation [[1](#ref-1)]: if a low-weight codeword happens to have
 **no more than one** nonzero entry inside the information set, it is equal to a
-single row of the systematic form, and it can simply be read off. Prange's
+single row of the systematic form, and it can simply be read off. The basic
 algorithm repeats: pick a random information set, eliminate, look at the rows,
 keep the lightest. A codeword of weight `w` is found once an information set
 avoids almost all of its support, which for small `w` happens with a probability
 that can be estimated in closed form.
 
-### Background 2: Lee–Brickell and Stern
+### Background 2: sums of rows and collision search
 
-**Lee–Brickell (1988)** also checks sums of `p = 2` or `3` rows, so it also finds
+A first refinement [[2](#ref-2)] also checks sums of `p = 2` or `3` rows, so it also finds
 codewords with 2 or 3 entries in the information set. This raises the success
 probability per elimination considerably, at the cost of more work per step.
 
-**Stern (1989)** makes the search for sums of rows efficient. Rows are sorted
+A second refinement [[3](#ref-3)] makes the search for sums of rows efficient. Rows are sorted
 into buckets by their values on a small random set of `ℓ` redundant columns. Two
 rows in the same bucket sum to zero on those `ℓ` columns, which makes their sum
 much more likely to be light. Only such pairs (a **collision search**) are
 examined, instead of all pairs.
 
-### Background 3: Canteaut–Chabaud
+### Background 3: moving between information sets
 
 A full Gaussian elimination per step costs `O(k n²)` bit operations.
-**Canteaut and Chabaud (1998)** observed that one can instead move to a
+It was later observed [[4](#ref-4)] that one can instead move to a
 neighbouring information set by **swapping a single column**: one column leaves
 the information set and one redundant column enters it. Updating the systematic
 form costs one row operation per affected row. The search then becomes a
@@ -212,7 +211,7 @@ The weights steer the walk:
 
 - **Which column leaves the information set.** A few candidate pivot columns
   are drawn at random and the one with the **highest** weight leaves
-  (tournament selection).
+  (tournament selection [[14](#ref-14)]).
 - **Which column enters.** Among the redundant columns that can replace it,
   the one with the **lowest** weight enters.
 - **Restarts.** Periodically the chain draws a completely new information set
@@ -220,8 +219,8 @@ The weights steer the walk:
   noise added, so high-weight columns end up redundant.
 
 Columns that appear in light codewords are therefore kept **out of** the
-information set, which is exactly the situation in which Prange, Lee–Brickell
-and Stern can read those codewords off. Each new light codeword reinforces its
+information set, which is exactly the situation in which the extraction steps of
+Background 1 and 2 can read those codewords off. Each new light codeword reinforces its
 own region, so the walk climbs toward ever lighter codewords: a **stochastic hill
 climb**, guided by a memory of where light codewords were found. With some
 probability (8–25% depending on the chain) a move is made uniformly at random
@@ -231,7 +230,7 @@ instead, which keeps the walk from becoming deterministic.
 
 A pure hill climb gets stuck. The learned weights tend to concentrate on the
 support of the best codeword found so far, and the chain then keeps rediscovering
-that one codeword. Sisyphus handles this the way **iterated local search** does.
+that one codeword. Sisyphus handles this the way iterated local search [[12](#ref-12)] does.
 When a chain's best weight has not improved for a long time (both a fixed number
 of iterations and a multiple of the longest gap between its previous
 improvements), the chain **forgets part of its learned weights** on its best
@@ -252,8 +251,8 @@ turns a near-miss into a lighter codeword.
 
 #### 4. Parallel search: the island model
 
-Chains are organized as in the **island model** of parallel evolutionary
-algorithms. Each process (an *island*) runs four chains in lockstep: three
+Chains are organized as in the island model of parallel evolutionary
+algorithms [[13](#ref-13)]. Each process (an *island*) runs four chains in lockstep: three
 learning chains with different learning rates and the uniform chain. Islands are
 independent and do not exchange information. Each island runs for a fixed budget
 of iterations (by default at most 250,000 per island) and is then replaced by a
@@ -286,7 +285,7 @@ codes.
 
 - **Bit-packed GF(2) arithmetic.** All matrices are stored as 64-bit words, so
   one XOR processes 64 entries. Gaussian elimination and the batched column
-  swaps use the **Method of Four Russians** (as in the M4RI library).
+  swaps use the Method of Four Russians [[9](#ref-9), [10](#ref-10)].
 - **Compact systematic form.** A systematic generator matrix is `[I | P]` up to
   column order, so only the `P` part (the redundant columns) is stored. Per-step
   work and memory scale with the number of redundant columns `n − k` (the rank
@@ -314,7 +313,7 @@ with probability 2⁻⁶⁴.
 
 ## How Sisyphus improves on other randomized ISD methods
 
-| | Prange | Lee–Brickell | Stern | Canteaut–Chabaud | dist-m4ri (RW) | **Sisyphus** |
+| | basic ISD [[1](#ref-1)] | sums of rows [[2](#ref-2)] | collision search [[3](#ref-3)] | column-swap walk [[4](#ref-4)] | dist-m4ri [[6](#ref-6)] | **Sisyphus** |
 |---|---|---|---|---|---|---|
 | Next information set | random, full elimination | random, full elimination | random, full elimination | one column swap | random (uniform or a random window of columns), full elimination | one column swap, plus periodic restarts |
 | Candidates per step | rows | rows + sums of `p` rows | rows + colliding pairs | rows + colliding pairs | rows + pairs | rows + colliding pairs + colliding triples |
@@ -334,7 +333,7 @@ In words:
    supports (bivariate bicycle, generalized bicycle, affine-permutation codes),
    this is why Sisyphus finds the weight-20 Z logicals of [[4608,2308,≤20]] 2–5×
    faster than dist-m4ri's random sampling.
-2. **Cheap steps.** Single column swaps (Canteaut–Chabaud) and restarts from the
+2. **Cheap steps.** Single column swaps [[4](#ref-4)] and restarts from the
    check matrix keep each step cheap. The compact `[I | P]` storage cuts memory
    and time by `n / (n − k)`.
 3. **Robustness of a population.** Several learning rates, one uniform chain,
@@ -442,7 +441,7 @@ are listed for completeness.
 | `swaps_per_shot` | `8` | column swaps per iteration, applied as one batch. |
 | `restart_interval` | `None` | iterations between fresh information sets. `None` = `min(2000, max(150, k/3))` with `k` the dimension of the searched space. |
 | `lb_p` | `2` | candidate extraction: `0` rows only, `1` + pairs, `2` + triples. |
-| `lb_hash_l` | `12` | `ℓ`, the number of random redundant columns used to bucket rows in the collision search (Stern). `0` = exhaustive pairs and triples among the lightest rows instead. |
+| `lb_hash_l` | `12` | `ℓ`, the number of random redundant columns used to bucket rows in the collision search [[3](#ref-3)]. `0` = exhaustive pairs and triples among the lightest rows instead. |
 | `lb_M` | `256` | size of the list of lightest rows used for triples. Use `48` with `lb_hash_l=0`. |
 | `lb_R` | `48` | rows used as the first element of a triple. |
 | `lb_hash_windows` | `1` | independent random column sets for bucketing per iteration. |
@@ -457,7 +456,7 @@ are listed for completeness.
 | `window_min` | `16` | smallest window, in detectors. |
 | `explorer_restart` | `0` | restart interval of the uniform chain (`0` = same as the others). `1` turns it into a fresh uniform information set every iteration. |
 | `max_codewords` | `2000` | minimum-weight solutions stored per island. |
-| `m4ri_k` | `8` | block size of the Method of Four Russians in elimination. |
+| `m4ri_k` | `8` | block size of the Method of Four Russians [[9](#ref-9)] in elimination. |
 | `proj_words` | `1` | 64-bit words of random parities used for verification (64 parities per word). |
 | `migrate_interval`, `migrate_boost` | `100`, `0.0` | sharing of the island's best support between its chains (off by default: it made chains converge on one codeword). |
 | `stall_rounds` | `0` | restart a whole island after this many iterations without improvement (off). |
@@ -605,10 +604,10 @@ Sisyphus/
 │   │                     starting basis
 │   ├── chain_compact.py  search chain on the compact [I | P] form (default)
 │   ├── chain_full.py     search chain on full-width rows (compact=False)
-│   ├── extraction.py     candidate extraction (Prange, Lee–Brickell, Stern collisions)
+│   ├── extraction.py     candidate extraction (single rows, sums of rows, collision search)
 │   │                     and greedy weight reduction
 │   ├── windows.py        detector time windows for circuit-level models
-│   ├── gf2.py            bit-packed GF(2) linear algebra (M4RI row reduction, kernels)
+│   ├── gf2.py            bit-packed GF(2) linear algebra (Four-Russians row reduction)
 │   ├── params.py         default search parameters
 │   ├── results.py        result types
 │   └── dem.py            Stim detector error model helpers
@@ -659,60 +658,60 @@ distance-finding paper of Webster, Jacob and Higgott:
 
 Information-set decoding and low-weight codeword search:
 
-1. E. Prange, "The use of information sets in decoding cyclic codes", *IRE
+1. <a id="ref-1"></a>E. Prange, "The use of information sets in decoding cyclic codes", *IRE
    Transactions on Information Theory* 8(5), S5–S9 (1962). Information sets;
    reading codewords off a systematic generator matrix.
-2. P. J. Lee and E. F. Brickell, "An observation on the security of McEliece's
+2. <a id="ref-2"></a>P. J. Lee and E. F. Brickell, "An observation on the security of McEliece's
    public-key cryptosystem", *EUROCRYPT 1988*, LNCS 330, 275–280 (1988). Sums of
    several rows.
-3. J. Stern, "A method for finding codewords of small weight", *Coding Theory and
+3. <a id="ref-3"></a>J. Stern, "A method for finding codewords of small weight", *Coding Theory and
    Applications*, LNCS 388, 106–113 (1989). Collision search on a subset of
    redundant columns.
-4. A. Canteaut and F. Chabaud, "A new algorithm for finding minimum-weight words
+4. <a id="ref-4"></a>A. Canteaut and F. Chabaud, "A new algorithm for finding minimum-weight words
    in a linear code: application to McEliece's cryptosystem and to narrow-sense
    BCH codes of length 511", *IEEE Transactions on Information Theory* 44(1),
    367–378 (1998). Moving between information sets by single column swaps.
 
 Distance of quantum codes and circuits:
 
-5. L. P. Pryadko, V. A. Shabashov and V. K. Kozin, "QDistRnd: A GAP package for
+5. <a id="ref-5"></a>L. P. Pryadko, V. A. Shabashov and V. K. Kozin, "QDistRnd: A GAP package for
    computing the distance of quantum error-correcting codes", *Journal of Open
    Source Software* 7(71), 4120 (2022).
-6. L. P. Pryadko and W. Zeng, dist-m4ri, https://github.com/QEC-pages/dist-m4ri.
+6. <a id="ref-6"></a>L. P. Pryadko and W. Zeng, dist-m4ri, https://github.com/QEC-pages/dist-m4ri.
    Random-window information sets and connected-cluster search for codes and
    detector error models; the circuit-level benchmark set used here.
-7. M. Webster, A. Jacob and O. Higgott, "Distance-Finding Algorithms for Quantum
+7. <a id="ref-7"></a>M. Webster, A. Jacob and O. Higgott, "Distance-Finding Algorithms for Quantum
    Codes and Circuits", arXiv:2603.22532 (2026).
-8. C. Gidney, "Stim: a fast stabilizer circuit simulator", *Quantum* 5, 497
+8. <a id="ref-8"></a>C. Gidney, "Stim: a fast stabilizer circuit simulator", *Quantum* 5, 497
    (2021). Detector error models.
 
 Linear algebra over GF(2):
 
-9. V. L. Arlazarov, E. A. Dinic, M. A. Kronrod and I. A. Faradzev, "On economical
+9. <a id="ref-9"></a>V. L. Arlazarov, E. A. Dinic, M. A. Kronrod and I. A. Faradzev, "On economical
    construction of the transitive closure of an oriented graph", *Soviet
    Mathematics Doklady* 11, 1209–1210 (1970). The Method of Four Russians.
-10. M. R. Albrecht, G. V. Bard and W. Hart, "Algorithm 898: Efficient
+10. <a id="ref-10"></a>M. R. Albrecht, G. V. Bard and W. Hart, "Algorithm 898: Efficient
     multiplication of dense matrices over GF(2)", *ACM Transactions on
     Mathematical Software* 37(1), 9 (2010). The M4RI library.
 
 Search heuristics:
 
-11. H. H. Hoos and T. Stützle, *Stochastic Local Search: Foundations and
+11. <a id="ref-11"></a>H. H. Hoos and T. Stützle, *Stochastic Local Search: Foundations and
     Applications*, Morgan Kaufmann (2004). Stochastic hill climbing with restarts.
-12. H. R. Lourenço, O. C. Martin and T. Stützle, "Iterated local search",
+12. <a id="ref-12"></a>H. R. Lourenço, O. C. Martin and T. Stützle, "Iterated local search",
     *Handbook of Metaheuristics*, 320–353 (2003). Perturbation and restart from a
     local optimum.
-13. D. Whitley, S. Rana and R. B. Heckendorn, "The island model genetic
+13. <a id="ref-13"></a>D. Whitley, S. Rana and R. B. Heckendorn, "The island model genetic
     algorithm: on separability, population size and convergence", *Journal of
     Computing and Information Technology* 7(1), 33–47 (1999). Independent
     subpopulations in parallel.
-14. D. E. Goldberg and K. Deb, "A comparative analysis of selection schemes used
+14. <a id="ref-14"></a>D. E. Goldberg and K. Deb, "A comparative analysis of selection schemes used
     in genetic algorithms", *Foundations of Genetic Algorithms*, 69–93 (1991).
     Tournament selection.
 
 Codes used in the benchmarks:
 
-15. S. Bravyi, A. W. Cross, J. M. Gambetta, D. Maslov, P. Rall and T. J. Yoder,
+15. <a id="ref-15"></a>S. Bravyi, A. W. Cross, J. M. Gambetta, D. Maslov, P. Rall and T. J. Yoder,
     "High-threshold and low-overhead fault-tolerant quantum memory", *Nature*
     627, 778–782 (2024). Bivariate bicycle codes.
 
