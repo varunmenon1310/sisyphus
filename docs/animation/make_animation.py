@@ -1,12 +1,10 @@
 """Animated GIF for the README: Sisyphus pushes a boulder up a terraced hill whose ledges are
-lighter and lighter logical operators of the [[360,12,24]] bivariate bicycle code.
+lighter and lighter undetectable fault sets of a circuit.
 
-The codewords are real: a plain random information-set search (one fresh information set per
-step) on the code records every improvement of the lightest X logical, and Sisyphus itself supplies
-the last ledge, a logical of weight 24 = d. The panel below shows the current codeword on the
-360 qubits (two 6 x 30 blocks, x^i y^j at row j, column i; accent = support) over a grey
-schematic of the learned column weights: reinforced by every light codeword, partially
-forgotten when a climb stalls (the boulder rolls back), as in the search itself.
+Illustration only. The panel below is a caricature of a detector error model: a space-time grid
+of detectors (columns: position, rows: rounds) and, in orange, a set of faults that together
+flip no detector and connect the two boundaries, i.e. flip a logical observable. Each ledge
+shows a lighter such fault set; the last one, weight 10, is the shortest chain across the grid.
 
     python docs/animation/make_animation.py [out.gif]      (numpy, matplotlib, pillow)
 """
@@ -18,89 +16,51 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter
-from matplotlib.patches import Circle, Rectangle, Polygon
+from matplotlib.patches import Circle, Polygon
+from matplotlib.collections import LineCollection
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
-from examples.codes import bivariate_bicycle  # noqa: E402
-
 OUT = sys.argv[1] if len(sys.argv) > 1 else str(ROOT / "docs" / "sisyphus_climb.gif")
-rng = np.random.default_rng(7)
+rng = np.random.default_rng(3)
 
-
-# ----------------------------------------------------------------- GF(2) helpers (small sizes)
-def rref(M, order=None):
-    """Row-reduce M (copy) with columns visited in `order`; returns (R, pivots)."""
-    A = M.copy() % 2
-    order = np.arange(A.shape[1]) if order is None else order
-    r, piv = 0, []
-    for c in order:
-        rows = np.nonzero(A[r:, c])[0]
-        if len(rows) == 0:
-            continue
-        p = r + rows[0]
-        A[[r, p]] = A[[p, r]]
-        others = np.nonzero(A[:, c])[0]
-        others = others[others != r]
-        A[others] ^= A[r]
-        piv.append(c)
-        r += 1
-        if r == A.shape[0]:
-            break
-    return A[:r], piv
-
-
-def kernel(H):
-    R, piv = rref(H)
-    n = H.shape[1]
-    free = [c for c in range(n) if c not in set(piv)]
-    K = np.zeros((len(free), n), np.uint8)
-    for t, f in enumerate(free):
-        K[t, f] = 1
-        for i, p in enumerate(piv):
-            K[t, p] = R[i, f]
-    return K
-
-
-# [[360,12,24]] bivariate bicycle code: A = x^9 + y + y^2, B = y^3 + x^25 + x^26 on Z_30 x Z_6
-L_, M_, D_ = 30, 6, 24
-Hx, Hz = bivariate_bicycle(L_, M_, [(9, 0), (0, 1), (0, 2)], [(0, 3), (25, 0), (26, 0)])
-n = Hx.shape[1]
-G = kernel(Hz)                      # X-type: ker Hz
-Lz = kernel(Hx)                     # c in ker Hz is a nontrivial X logical iff it has odd
-# overlap with some element of ker Hx (the Z stabilizers in ker Hx contribute nothing)
-
-
-def nontrivial(c):
-    return bool((Lz.astype(np.int64) @ c % 2).any())
-
-
-# ----------------------------------------------------------------- a real improvement trace
-trace = []
-best = n + 1
-for step in range(6000):
-    order = rng.permutation(n)
-    R, _ = rref(G, order)
-    w = R.sum(1)
-    for i in np.argsort(w):
-        if w[i] >= best:
-            break
-        if nontrivial(R[i]):
-            best = int(w[i])
-            trace.append(R[i].copy())
-            break
-    if best <= D_:
-        break
-if best > D_:                       # finish the climb with Sisyphus itself
-    from sisyphus_qec import side_distance
-    res = side_distance(Hz, Hx, num_trials=200000, num_workers=1, seed=3, cutoff=D_)
-    trace.append(np.asarray(res.witness, np.uint8))
-print("trace weights:", [int(c.sum()) for c in trace], "steps:", step + 1, flush=True)
-if len(trace) > 8:                  # keep the first, the last and evenly spaced ledges
-    keep = np.unique(np.round(np.linspace(0, len(trace) - 1, 8)).astype(int))
-    trace = [trace[i] for i in keep]
-W = [int(c.sum()) for c in trace]
+# ----------------------------------------------------------------- schematic fault sets
+NCOL, NROW = 9, 5                  # detectors: positions x rounds (shortest crossing: NCOL + 1 = 10)
+W = [24, 19, 15, 12, 10]           # weights of the successive fault sets (10 = distance)
 K = len(W)
+
+
+def chain(weight, seed):
+    """A path of `weight` faults across the grid from the left to the right boundary: horizontal
+    steps (data errors), vertical steps (measurement errors) and diagonal steps (hook errors)."""
+    r = np.random.default_rng(seed)
+    x, y = -1, int(r.integers(1, NROW - 1))
+    pts = [(x, y)]
+    steps = weight
+    while steps > 0:
+        need = NCOL - x                              # horizontal steps still needed to exit
+        slack = steps - need
+        if slack > 0 and 0 <= x < NCOL and r.random() < 0.55:   # spend slack on a vertical step
+            ny = y + (1 if (y == 0 or (y < NROW - 1 and r.random() < 0.5)) else -1)
+            x, y = x, ny
+        else:
+            dy = 0
+            if 0 < x + 1 < NCOL and r.random() < 0.35:
+                dy = int(r.choice([-1, 1]))
+                if not 0 <= y + dy < NROW:
+                    dy = -dy
+            x, y = x + 1, y + dy
+        pts.append((x, y))
+        steps -= 1
+    return pts
+
+
+PANEL = []
+for i, w in enumerate(W):
+    pts = chain(w, 10 + i)
+    segs = [[pts[j], pts[j + 1]] for j in range(len(pts) - 1)]
+    inner = np.array([p for p in pts if 0 <= p[0] < NCOL], float)
+    PANEL.append((segs, inner))
+
 
 # ----------------------------------------------------------------- style
 INK, PAPER, HILL, MUTED, ACCENT = "#232323", "#fafaf7", "#ecebe6", "#9b9a95", "#e0603a"
@@ -180,22 +140,10 @@ while lvl < K - 1:
     lvl += 1
     hold(14 if lvl < K - 1 else 48, S_LEDGE[lvl], lvl, "learn")
 
-theta = np.zeros(n)
-thetas = []
-for s, lv, ev in frames:
-    if ev == "learn":
-        theta = 0.6 * theta + trace[lv]
-    elif ev == "kick":
-        sup = np.nonzero(trace[lv])[0]
-        forget = rng.choice(sup, size=max(1, int(0.3 * len(sup))), replace=False)
-        theta[forget] *= 0.15
-        theta *= 0.7
-    thetas.append(theta / max(theta.max(), 1e-9))
-
 # ----------------------------------------------------------------- figure
-fig = plt.figure(figsize=(8.0, 4.7), dpi=110, facecolor=PAPER)
-ax = fig.add_axes([0.03, 0.33, 0.94, 0.65], facecolor=PAPER)
-axg = fig.add_axes([0.07, 0.10, 0.86, 0.19], facecolor=PAPER)
+fig = plt.figure(figsize=(8.0, 5.0), dpi=110, facecolor=PAPER)
+ax = fig.add_axes([0.03, 0.37, 0.94, 0.61], facecolor=PAPER)
+axg = fig.add_axes([0.07, 0.09, 0.86, 0.25], facecolor=PAPER)
 xmin, xmax = XS[0], XS[-1]
 ax.set_xlim(xmin, xmax)
 ax.set_ylim(-0.45, (K - 1) * RISE + 0.85)
@@ -241,24 +189,24 @@ summit = Circle((X_LEDGE[-1] + 0.45, (K - 1) * RISE + 0.0), 0.05, fc=ACCENT, ec=
                 visible=False)
 ax.add_patch(summit)
 
-# qubit panel: two 6 x 30 blocks
-axg.set_xlim(-0.6, 2 * L_ + 0.6)
-axg.set_ylim(-0.6, M_ - 0.4)
+# schematic space-time panel: detectors in grey, boundaries as thin lines, the fault set in orange
+axg.set_xlim(-1.6, NCOL + 0.6)
+axg.set_ylim(-0.7, NROW - 0.3)
 axg.set_aspect("equal")
 axg.axis("off")
-base = np.array(matplotlib.colors.to_rgb(HILL))
-dark = np.array(matplotlib.colors.to_rgb(MUTED))
-acc = np.array(matplotlib.colors.to_rgb(ACCENT))
-cells = []
-for q in range(n):
-    b, r = divmod(q, L_ * M_)
-    i, j = divmod(r, M_)
-    cx = i + (L_ + 1 if b else 0)
-    cells.append(axg.add_patch(Rectangle((cx - 0.42, M_ - 1 - j - 0.42), 0.84, 0.84,
-                                         fc=HILL, ec="none")))
+gx, gy = np.meshgrid(np.arange(NCOL), np.arange(NROW))
+axg.scatter(gx.ravel(), gy.ravel(), s=9, c=MUTED, lw=0, zorder=1)
+for bx in (-1, NCOL):
+    axg.plot([bx, bx], [-0.4, NROW - 0.6], color=MUTED, lw=1.0, zorder=1)
+axg.annotate("", xy=(-1.45, NROW - 0.6), xytext=(-1.45, -0.4),
+             arrowprops=dict(arrowstyle="->", color=MUTED, lw=0.8))
+axg.text(-1.6, (NROW - 1) / 2, "time", fontsize=7, color=MUTED, ha="right", va="center", rotation=90)
+FAULT_LINES = LineCollection([], colors=ACCENT, linewidths=2.4, capstyle="round", zorder=3)
+axg.add_collection(FAULT_LINES)
+FAULT_DOTS = axg.scatter([], [], s=22, c=ACCENT, lw=0, zorder=4)
 
 
-# one live sentence under the qubit grid
+# one live sentence under the space-time panel
 legend = fig.text(0.5, 0.04, "", ha="center", va="center", color=INK, fontsize=9.5)
 
 
@@ -304,12 +252,11 @@ def draw(k):
     done = lv == K - 1 and abs(s - S_LEDGE[-1]) < 1e-9
     readout.set_text(f"w = {W[lv]}" + (" = d" if done else ""))
     readout.set_color(ACCENT if done else INK)
-    legend.set_text(f"Weight-{W[lv]} logical X operator of the [[360,12,24]] bivariate bicycle code")
+    legend.set_text(f"Weight-{W[lv]} undetectable fault set (schematic detector error model)")
     summit.set_visible(done)
-    th = thetas[k]
-    cw = trace[lv]
-    for q in range(n):
-        cells[q].set_facecolor(acc if cw[q] else base + (dark - base) * (0.85 * th[q]))
+    segs, dots = PANEL[lv]
+    FAULT_LINES.set_segments(segs)
+    FAULT_DOTS.set_offsets(dots if len(dots) else np.zeros((0, 2)))
     return []
 
 
