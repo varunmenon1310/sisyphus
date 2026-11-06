@@ -33,7 +33,7 @@ information sets instead of drawing them independently. If you use Sisyphus in p
 work, please cite it together with QDistRnd and the distance-finding paper of Webster, Jacob
 and Higgott (see [Citing](#citing)).
 
-Results, from the [benchmarks](#benchmarks) against dist-m4ri, QDistEvol and sqetch on the
+Results, from the [benchmarks](#benchmarks) against dist-m4ri, QDistEvol and sQetch on the
 same problems and hardware:
 
 - On the larger memory-experiment circuits, Sisyphus is the only one of the four tools that
@@ -326,14 +326,25 @@ arguments to `css_distance` and `side_distance`.
 
 ## Benchmarks
 
-Sisyphus, [dist-m4ri](https://github.com/QEC-pages/dist-m4ri) [[6](#ref-6)],
-QDistEvol [[7](#ref-7)] and [sqetch](https://github.com/a7b/yarn/tree/main/sqetch) were run on
-the same 13 problems:
+We compare Sisyphus with three other methods that search for low-weight logical operators and
+fault sets, all of which give upper bounds:
+
+- [dist-m4ri](https://github.com/QEC-pages/dist-m4ri) [[6](#ref-6)], a C program for codes and
+  circuit-level models. Its upper-bound search draws random information sets restricted to
+  random windows of columns; a separate connected-cluster mode proves lower bounds.
+- QDistEvol [[7](#ref-7)], part of the Python `codedistance` package, which evolves a population
+  of information sets: the best ones of each generation are mutated by random column swaps.
+- [sQetch](https://github.com/a7b/yarn/tree/main/sqetch) [[18](#ref-18)], a GPU estimator
+  introduced with the mitten codes. It runs many independent information-set trials in parallel,
+  each on a random low-dimensional sketch of one fixed basis of the searched space.
+
+A recent survey and benchmark of distance-finding methods [[7](#ref-7)] describes dist-m4ri and
+QDistEvol in more detail. All four tools were run on the same 13 problems:
 
 - The CPU tools each get 16 cores of one Intel Xeon 8480 node: 16 worker processes for
   Sisyphus, 16 threads for dist-m4ri (v0.14.7, random information sets, default settings), and
   16 independent runs for QDistEvol (`codedistance` v0.0.8, default settings), timed to the
-  first run that reaches the target. sqetch runs only on GPUs and gets one NVIDIA A100 (sketch
+  first run that reaches the target. sQetch runs only on GPUs and gets one NVIDIA A100 (sketch
   dimension 64, or the largest that fits).
 - Each run stops at the target weight, which is the exact distance where known and otherwise
   the lightest known weight. Each tool has three runs per problem.
@@ -346,7 +357,7 @@ basis. Bold marks the best result in each row (lowest median time, or lightest w
 **Time to reach the target** (fastest–slowest of 3 runs; "(k of 3)" if only k runs reached it;
 "not reached (w)" if no run did, with w the lightest weight found):
 
-| problem | target | limit | Sisyphus | dist-m4ri | QDistEvol | sqetch |
+| problem | target | limit | Sisyphus | dist-m4ri | QDistEvol | sQetch |
 |---|---|---|---|---|---|---|
 | gross [[144,12,12]] | 12 | 10 min | 0.03–0.04 s | **< 0.01 s** | **< 0.01 s** | 0.01 s |
 | [[756,16,34]] bivariate bicycle [[15](#ref-15)] | 34 | 10 min | **0.07–0.2 s** | 0.1–0.5 s | 2.4–5.8 s | 80 s (1 of 3) |
@@ -361,14 +372,14 @@ basis. Bold marks the best result in each row (lowest median time, or lightest w
 **Lightest fault set found within the time limit** on the larger circuits (lower is better;
 the target is the lightest weight known):
 
-| circuit | target | limit | Sisyphus | dist-m4ri | QDistEvol | sqetch |
+| circuit | target | limit | Sisyphus | dist-m4ri | QDistEvol | sQetch |
 |---|---|---|---|---|---|---|
 | double gross [[288,12,18]], 18 rounds (2,736 × 26,208) | 16 | 30 min | **16** (3–6 s) | 18 | 31 | 23 |
 | [[360,12,24]], 24 rounds (4,500 × 43,560) | 21 | 30 min | **21** (9–10 s) | 22 | 63 | 39¹ |
 | [[756,16,34]], 34 rounds (13,230 × 129,276) | – | 1 h | **31** (329–409 s) | 45 | out of memory² | does not fit³ |
 | [[4608,2308,20]], one round (2,304 × 29,952) | 20 | 1 h | **22** | 490 | 574 | 174 |
 
-¹ sqetch's own codeword recovery did not return a valid word of this weight.
+¹ sQetch's own codeword recovery did not return a valid word of this weight.
 ² Sixteen parallel runs on this problem need more than the 180 GB of the allocation.
 ³ One sketch row plus the column permutation exceed the GPU's shared memory per block.
 
@@ -381,15 +392,15 @@ Summary:
 
 - On small problems (codes up to a few thousand qubits, circuits up to about 10⁴ faults),
   Sisyphus and dist-m4ri reach the target in under a second, dist-m4ri usually first because of
-  its lower start-up cost. QDistEvol and sqetch are as fast on the smallest codes but take
+  its lower start-up cost. QDistEvol and sQetch are as fast on the smallest codes but take
   minutes or stop above the target on the small circuits.
 - On larger circuits Sisyphus is ahead: it is the only tool that reaches the target on the
   double-gross and [[360,12,24]] circuits, and it finds the lightest fault sets on the two
   largest circuits.
 - On large codes the results are mixed. Sisyphus is fastest on [[2844,1426,18]], it overlaps
   with dist-m4ri on the X side of [[4608,2308,20]], and dist-m4ri is faster on the Z side.
-- QDistEvol and sqetch reach the distance of codes up to [[2304,1156,14]], not in every run,
-  and not of the larger codes or circuits. sqetch searches a fixed sketch of one basis and
+- QDistEvol and sQetch reach the distance of codes up to [[2304,1156,14]], not in every run,
+  and not of the larger codes or circuits. sQetch searches a fixed sketch of one basis and
   levels off above the distance (22 on [[2844,1426,18]], 128 on the Z side of
   [[4608,2308,20]]).
 
@@ -410,9 +421,6 @@ python benchmarks/verify_witnesses.py /path/to/dist-m4ri/benchmark
 | `double_gross_288_12_18_si1000_r18`, X and Z basis | ≤ 18 (X) | **16** |
 | `double_gross_288_12_18_uniform_r18`, X basis | not computed | **16** |
 | `gross_144_12_12_uniform_r12`, X basis | ≤ 11 | **10** |
-
-The weight-31 fault set of the [[756,16,34]] circuit is below the code distance; the
-syndrome-extraction schedule loses distance to hook errors.
 
 ## Limitations
 
@@ -556,6 +564,9 @@ Codes used in the benchmarks:
 17. <a id="ref-17"></a>C. Zhao, C. Duckering, A. Gu, N. Maskara and H. Zhou, "Towards ultra-high-rate
     quantum error correction with reconfigurable atom arrays", arXiv:2604.16209 (2026).
     Affine-permutation codes.
+18. <a id="ref-18"></a>A. Bhardwaj, M. Ma, N. Meister, R. King, D. Bluvstein, J. Preskill, M. Cain,
+    Q. Xu and H.-Y. Huang, "High-rate qLDPC processors", arXiv:2607.28795 (2026). Mitten codes
+    and the sQetch distance estimator.
 
 ## Acknowledgements
 
