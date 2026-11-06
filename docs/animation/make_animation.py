@@ -193,9 +193,9 @@ for s, lv, ev in frames:
     thetas.append(theta / max(theta.max(), 1e-9))
 
 # ----------------------------------------------------------------- figure
-fig = plt.figure(figsize=(8.0, 4.4), dpi=110, facecolor=PAPER)
-ax = fig.add_axes([0.03, 0.30, 0.94, 0.68], facecolor=PAPER)
-axg = fig.add_axes([0.07, 0.04, 0.86, 0.20], facecolor=PAPER)
+fig = plt.figure(figsize=(8.0, 4.7), dpi=110, facecolor=PAPER)
+ax = fig.add_axes([0.03, 0.33, 0.94, 0.65], facecolor=PAPER)
+axg = fig.add_axes([0.07, 0.10, 0.86, 0.19], facecolor=PAPER)
 xmin, xmax = XS[0], XS[-1]
 ax.set_xlim(xmin, xmax)
 ax.set_ylim(-0.45, (K - 1) * RISE + 0.85)
@@ -206,17 +206,19 @@ ax.plot(XS, YS, color=INK, lw=1.4, solid_capstyle="round", zorder=2)
 for i in range(K):
     ax.text(X_LEDGE[i], i * RISE - 0.13, f"{W[i]}", ha="center", va="top", fontsize=8.5,
             color=MUTED, zorder=2)
-readout = ax.text(xmax - 0.05, (K - 1) * RISE + 0.78, "", ha="right", va="top", fontsize=11,
+readout = ax.text(xmin + 0.05, (K - 1) * RISE + 0.78, "", ha="left", va="top", fontsize=11,
                   color=INK, family="DejaVu Sans Mono", zorder=6)
 ball = Circle((0, 0), R_BALL, fc=INK, ec="none", zorder=5)
 ax.add_patch(ball)
 spot = Circle((0, 0), 0.032, fc=PAPER, ec="none", zorder=6)
 ax.add_patch(spot)
 stroke = dict(color=INK, solid_capstyle="round", solid_joinstyle="round", zorder=4)
-torso, = ax.plot([], [], lw=2.8, **stroke)
-legs, = ax.plot([], [], lw=2.2, **stroke)
-arm, = ax.plot([], [], lw=2.0, **stroke)
-head = Circle((0, 0), 0.065, fc=INK, ec="none", zorder=4)
+torso = Polygon(np.zeros((4, 2)), closed=True, fc=INK, ec=INK, lw=1.0, joinstyle="round",
+                zorder=4)                     # tapered: broad shoulders, narrower waist
+ax.add_patch(torso)
+legs, = ax.plot([], [], lw=3.4, **stroke)
+arms, = ax.plot([], [], lw=2.8, **stroke)
+head = Circle((0, 0), 0.068, fc=INK, ec="none", zorder=4)
 ax.add_patch(head)
 summit = Circle((X_LEDGE[-1] + 0.45, (K - 1) * RISE + 0.0), 0.05, fc=ACCENT, ec="none", zorder=3,
                 visible=False)
@@ -239,6 +241,10 @@ for q in range(n):
                                          fc=HILL, ec="none")))
 
 
+# one live sentence under the qubit grid
+legend = fig.text(0.5, 0.04, "", ha="center", va="center", color=INK, fontsize=9.5)
+
+
 def draw(k):
     s, lv, _ = frames[k]
     p, ang = at_s(s)
@@ -250,23 +256,28 @@ def draw(k):
     spot.center = c + 0.6 * R_BALL * np.array([np.cos(roll), np.sin(roll)])
     # the pusher: hands on the upper back of the boulder, body leaning into it
     hand = c + R_BALL * (-0.72 * u + 0.70 * nrm)
-    lean = np.deg2rad(46) + 0.5 * ang            # torso angle above the horizontal
+    lean = np.deg2rad(50) + 0.5 * ang            # torso angle above the horizontal
     tdir = np.array([np.cos(lean), np.sin(lean)])
-    sh = hand + np.array([-0.15, 0.11])
-    hip = sh - 0.30 * tdir
+    sh = hand + np.array([-0.12, 0.22])
+    hip = sh - 0.27 * tdir
     hd = sh + 0.095 * tdir + np.array([0.0, 0.035])
     s_hip = float(np.interp(hip[0], XS, ARC))
     phase = 9.0 * s
-    f1, _ = at_s(s_hip - 0.24 + 0.08 * np.sin(phase))
-    f2, _ = at_s(s_hip + 0.04 - 0.08 * np.sin(phase))
-    knee = 0.5 * (hip + f2) + 0.07 * u + 0.02 * nrm
-    torso.set_data([hip[0], sh[0]], [hip[1], sh[1]])
-    legs.set_data([f1[0], hip[0], knee[0], f2[0]], [f1[1], hip[1], knee[1], f2[1]])
-    arm.set_data([sh[0], hand[0]], [sh[1], hand[1]])
+    f1, _ = at_s(s_hip - 0.19 + 0.07 * np.sin(phase))
+    f2, _ = at_s(s_hip + 0.06 - 0.07 * np.sin(phase))
+    knee = 0.5 * (hip + f2) + 0.08 * u + 0.03 * nrm
+    perp = np.array([-tdir[1], tdir[0]])          # normal to the torso (towards the back)
+    torso.set_xy([sh + 0.050 * perp, sh - 0.040 * perp, hip - 0.028 * perp, hip + 0.036 * perp])
+    knee1 = 0.5 * (hip + f1) + 0.015 * nrm         # back leg nearly straight: it pushes
+    legs.set_data([f1[0], knee1[0], hip[0], knee[0], f2[0]],
+                  [f1[1], knee1[1], hip[1], knee[1], f2[1]])
+    elbow = 0.5 * (sh + hand) - 0.045 * nrm + 0.01 * u   # elbows bent down under the load
+    arms.set_data([sh[0], elbow[0], hand[0]], [sh[1], elbow[1], hand[1]])
     head.center = hd
     done = lv == K - 1 and abs(s - S_LEDGE[-1]) < 1e-9
     readout.set_text(f"w = {W[lv]}" + (" = d" if done else ""))
     readout.set_color(ACCENT if done else INK)
+    legend.set_text(f"orange: the qubits of a weight-{W[lv]} logical operator of the [[360,12,24]] bivariate bicycle code")
     summit.set_visible(done)
     th = thetas[k]
     cw = trace[lv]

@@ -11,10 +11,6 @@ the code distance**, together with an explicit, verified witness for every bound
   <img src="docs/sisyphus_climb.gif" width="680"
        alt="A figure pushes a boulder up a terraced hill; each ledge is a lighter logical operator">
 </p>
-<p align="center"><sub>Each ledge is a lighter logical operator of the [[360,12,24]] bivariate
-bicycle code. Below: the current logical on the 360 qubits (orange) and the learned column
-weights (grey). When a climb stalls, part of what was learned is forgotten and the boulder rolls
-back. <a href="docs/animation/make_animation.py">Script</a>.</sub></p>
 
 Sisyphus is a **hill-climbing variant of information-set decoding (ISD)**. It builds on
 Prange's algorithm and its standard refinements, on the quantum distance tools QDistRnd and
@@ -66,8 +62,9 @@ Highlights (details in [Benchmarks](#benchmarks-and-comparisons)):
 9. [Repository layout](#repository-layout)
 10. [Citing](#citing)
 11. [References](#references)
-12. [Disclosure](#disclosure)
-13. [License](#license)
+12. [Acknowledgements](#acknowledgements)
+13. [Disclosure](#disclosure)
+14. [License](#license)
 
 ---
 
@@ -201,113 +198,107 @@ It is the basis of most modern ISD implementations.
 
 ### What Sisyphus adds
 
-Sisyphus runs many such walks at once and makes each walk **learn where the light codewords
-are**. One iteration of a search chain does five things:
+Sisyphus runs many of these random walks at once and makes each walk **learn where the light
+codewords are**. One step of a walk does five things:
 
 1. **Move**: swap 8 columns between the information set and the redundant columns, chosen by
-   the learned column weights (below).
-2. **Extract candidates**: single rows, pairs and triples of rows found by a collision search
-   on `ℓ = 12` random redundant columns (Background 1 and 2).
-3. **Improve** every candidate by greedy weight reduction.
-4. **Verify** that the candidate is a nontrivial solution.
-5. **Learn**: update the column weights from the light rows just seen.
+   learned column scores (below).
+2. **Look for light codewords** among single rows of the systematic form and among sums of two
+   or three rows, found by the collision search on `ℓ = 12` random redundant columns
+   (Background 1 and 2).
+3. **Improve** each codeword found by greedy weight reduction.
+4. **Verify** that it is a nontrivial solution.
+5. **Learn**: update the column scores from the light rows just seen.
 
-Every 150–2,000 iterations (more for larger codes) the chain draws a fresh information set (a
-restart), also guided by the weights.
+Every 150–2,000 steps (more for larger codes) the walk starts over from a fresh information
+set, also chosen using the scores.
 
 **Heuristics used, at a glance:**
 
 | heuristic | what it does |
 |---|---|
-| learned column weights | a weight per column, reinforced by light codewords; steers which columns leave and enter the information set and the column order at restarts |
-| tournament selection [[14](#ref-14)] | the column that leaves is the heaviest of 8 randomly drawn information-set columns |
-| greedy entering column | the column that enters is the lightest admissible redundant column |
-| random moves | with probability ε (8–25% depending on the chain) a move is uniform instead |
-| iterated local search [[12](#ref-12)] | a stalled chain forgets 30% of the weights on its best codeword and restarts |
-| a non-learning chain | one chain per island always moves uniformly, for diversity |
-| greedy weight reduction | local search on every candidate: add basis rows while the weight drops |
-| island model [[13](#ref-13)] | independent processes of 4 chains, each replaced by a fresh one after 250,000 iterations |
-| detector time windows | circuit-level models only: half of the islands search sub-problems of consecutive detectors |
+| learned column scores | one score per column, raised by every light codeword that uses the column; decides which columns leave and enter the information set |
+| tournament selection [[14](#ref-14)] | the column that leaves is the highest-scoring of 8 randomly drawn information-set columns |
+| greedy choice of the entering column | the column that enters is the lowest-scoring admissible redundant column |
+| random moves | with probability ε (8–25%) a move is made uniformly at random instead |
+| iterated local search [[12](#ref-12)] | a walk that stops improving forgets 30% of the scores on its best codeword and starts over |
+| one non-learning walk | in each group of four walks, one always moves uniformly at random, for diversity |
+| greedy weight reduction | each codeword found is reduced by adding rows of the basis while its weight drops |
+| independent parallel searches [[13](#ref-13)] | each worker process runs four walks and is replaced by a freshly seeded one after 250,000 steps |
+| detector time windows | circuit-level models only: half of the searches work on the faults of a range of consecutive detectors |
 
 #### 1. How the information sets are learned
 
-Each chain keeps a weight `θ_c ≥ 0` for every column `c`, initially zero. After every
-iteration:
+Each walk keeps a score `θ_c ≥ 0` for every column `c`, initially zero. After every step:
 
 - **Decay**: `θ_c ← (1 − δ) θ_c` for all columns, so old information fades.
-- **Reinforce**: let `w*` be the lightest weight this chain has found so far. Every nontrivial
+- **Reinforce**: let `w*` be the lightest weight this walk has found so far. Every nontrivial
   row of the current systematic form with weight `w ≤ w* + m` adds `η · (w* + m − w + 1)` to
   `θ_c` for every column `c` in its support. Only rows close to the best count, and lighter
   rows count more.
 
-The weights then steer every choice of the walk:
+The scores then steer every choice of the walk:
 
 - **Which column leaves the information set**: 8 information-set columns are drawn at random
-  and the one with the **highest** `θ` leaves.
+  and the one with the **highest** score leaves.
 - **Which column enters**: among the redundant columns that can replace it (those where its
-  row has a 1), the one with the **lowest** `θ` enters.
-- **Restarts**: columns are ordered by `θ` plus random noise and eliminated in that order, so
-  high-weight columns end up redundant.
+  row has a 1), the one with the **lowest** score enters.
+- **Starting over**: columns are ordered by score plus random noise and eliminated in that
+  order, so high-scoring columns end up redundant.
 
 Columns that appear in light codewords are therefore kept **out of** the information set,
-which is exactly the situation in which the extraction step can read those codewords off.
-Each light codeword reinforces its own region, so the walk climbs toward lighter codewords: a
-**stochastic hill climb** guided by a memory of where light codewords were found.
+which is exactly the situation in which those codewords appear as single rows or as sums of a
+few rows. Each light codeword raises the scores of its own columns, so the walk climbs toward
+lighter codewords: a **stochastic hill climb** guided by a memory of where light codewords
+were found.
 
-The three learning chains of an island use different settings
-(learning rate `η`, decay `δ`, margin `m`, random-move probability `ε`):
-`(1.0, 0.010, 3, 0.10)`, `(1.5, 0.006, 2, 0.08)` and `(1.0, 0.010, 3, 0.25)`; the fourth chain
-does not learn (`ε = 1`).
+The three learning walks of a group use different settings (learning rate `η`, decay `δ`,
+margin `m`, random-move probability `ε`): `(1.0, 0.010, 3, 0.10)`, `(1.5, 0.006, 2, 0.08)` and
+`(1.0, 0.010, 3, 0.25)`; the fourth walk does not learn (`ε = 1`).
 
 #### 2. Escaping local optima
 
-A pure hill climb gets stuck. The learned weights tend to concentrate on the
-support of the best codeword found so far, and the chain then keeps rediscovering
-that one codeword. Sisyphus handles this the way iterated local search does.
-When a chain's best weight has not improved for a long time (both a fixed number
-of iterations and a multiple of the longest gap between its previous
-improvements), the chain **forgets part of its learned weights** on its best
-codeword's support (30% of those columns by default) and restarts from a fresh
-information set. It keeps its general sense of the region and leaves the exact
-local optimum.
+A pure hill climb gets stuck: the scores concentrate on the columns of the best codeword found
+so far, and the walk keeps finding that same codeword again. Sisyphus handles this as iterated
+local search does. When a walk's best weight has not improved for a long time (both a fixed
+number of steps and a multiple of the longest gap between its earlier improvements), the walk
+**resets the scores of 30% of its best codeword's columns** and starts over from a fresh
+information set. It keeps a rough memory of the region but leaves the exact local optimum.
 
-In addition, each group of chains contains one chain that does not learn at all
-and walks uniformly at random. It keeps the population diverse and helps
-enumerate many distinct minimum-weight codewords on small codes.
+In addition, one walk in every group of four does not learn and moves uniformly at random. It
+keeps the search diverse and helps collect many distinct minimum-weight codewords on small
+codes.
 
-#### 3. Greedy weight reduction of every candidate
+#### 3. Greedy weight reduction
 
-Every candidate codeword found by the read-off is improved by **local search**.
-Sisyphus repeatedly adds any row of the current basis that lowers the weight while
-keeping the vector a nontrivial solution, until no row helps. This often
-turns a near-miss into a lighter codeword.
+Every codeword found is improved by **local search**: Sisyphus repeatedly adds any row of the
+current basis that lowers the weight while keeping the vector a nontrivial solution, until no
+row helps. This often turns a near miss into a lighter codeword.
 
-#### 4. Parallel search: the island model
+#### 4. Independent parallel searches
 
-Chains are organized as in the island model of parallel evolutionary
-algorithms. Each process (an *island*) runs four chains in lockstep: three
-learning chains with different learning rates and the uniform chain. Islands are
-independent and do not exchange information. Each island runs for a fixed budget
-of iterations (by default at most 250,000 per island) and is then replaced by a
-freshly seeded island, until the total budget `num_trials` is spent. On hard
-instances the outcome varies much more between islands than within one, so many
-moderate islands beat a few long ones. When any island reaches the `cutoff`
-weight, all islands stop within one iteration.
+Each worker process runs one search: a group of four walks (three learning walks with
+different settings and the non-learning one) that take steps in turn. Searches are independent
+and do not exchange information, as in the island model of parallel evolutionary algorithms.
+Each search runs for a fixed number of steps (at most 250,000 by default) and is then replaced
+by a freshly seeded one, until the total budget `num_trials` is spent. On hard instances the
+outcome varies much more between searches than within one, so many moderate searches beat a
+few long ones. When any search reaches the `cutoff` weight, all of them stop within one step.
 
 #### 5. Circuit-level instances: detector time windows
 
 In a detector error model, detectors are ordered in time (round by round), and
 the light undetectable fault sets are local in time. A low-weight fault set
 typically spans only a few rounds of a long memory experiment. For such
-instances Sisyphus runs **half of its islands on time windows**. A window is a range
+instances Sisyphus runs **half of its searches on time windows**. A window is a range
 of consecutive detectors, and its sub-problem contains only the faults whose
 detectors all lie inside the window. Windows come in five sizes (halves, quarters, ... down to 1/32
 of the detectors, each size with 50% overlap between neighbouring windows), and
-each window island moves to a new random window periodically. A solution of a window sub-problem, padded with zeros, is a solution of
+each window search moves to a new random window periodically. A solution of a window sub-problem, padded with zeros, is a solution of
 the full problem, and it is verified as such.
 
-A window is 10–50× smaller than the full model, so its islands run 10–50×
-more iterations per second and concentrate on the right region immediately.
+A window is 10–50× smaller than the full model, so searches on it run 10–50×
+more steps per second and concentrate on the right region immediately.
 This is what lets Sisyphus solve large circuit instances such as the 34-round
 [[756,16,34]] circuit (13,230 detectors × 129,276 faults after reduction). By
 default (`windows="auto"`) windows are used only when the matrix has at least
@@ -337,8 +328,8 @@ A vector in the kernel can still be a stabilizer (a trivial solution). Sisyphus
 checks nontriviality with a **randomized test**. It draws 64 random vectors from
 the space that detects nontrivial solutions (for codes, random elements of the
 kernel of the opposite check matrix; for circuits, random combinations of the
-observable rows). Each candidate carries its 64 parities against them, updated
-alongside the rows at the cost of one extra 64-bit word per row. A nonzero parity **proves** that the candidate is
+observable rows). Each row carries its 64 parities against them, updated
+alongside the row at the cost of one extra 64-bit word per row. A nonzero parity **proves** that the vector is
 nontrivial, so Sisyphus never reports a stabilizer. A genuine logical is missed only
 with probability 2⁻⁶⁴.
 
@@ -375,12 +366,12 @@ DEM, the observable matrix).
 |---|---|
 | `distance` | weight of the lightest verified solution found (an upper bound); `-1` if the side was skipped |
 | `witness` | one solution of that weight (uint8 vector) |
-| `codewords` | all distinct solutions of that weight found (one per row; capped by `max_codewords` per island) |
+| `codewords` | all distinct solutions of that weight found (one per row; capped by `max_codewords` per search) |
 | `counts` | how many times each of them was found |
 | `num_codewords` | number of rows of `codewords` |
-| `shots` | iterations performed |
+| `shots` | steps performed (all walks) |
 | `wall_time` | seconds |
-| `islands` | number of islands run |
+| `islands` | number of independent searches run |
 | `t_best` | estimated time (s) at which `distance` was first reached |
 
 ### DEM helpers (`sisyphus_qec.dem`)
@@ -419,14 +410,14 @@ are listed for completeness.
 
 | option | default | meaning |
 |---|---|---|
-| `num_trials` | `20000` | total number of iterations over all islands (per side for `css_distance`). One iteration = one move of one chain plus candidate extraction. |
-| `num_workers` | `1` | islands run in parallel (processes). `None` = all available CPU cores. `1` runs in the calling process. |
+| `num_trials` | `20000` | total number of steps over all searches (per side for `css_distance`). One step = one move of one walk plus the search for light codewords. |
+| `num_workers` | `1` | searches run in parallel (one process each). `None` = all available CPU cores. `1` runs in the calling process. |
 | `cutoff` | `0` | stop as soon as a solution of weight `≤ cutoff` is found. `0` runs the whole budget, which also collects the set of minimum-weight solutions. |
 | `time_limit` | `None` | wall-clock budget in seconds (`side_distance`). The search returns the best result so far when it expires. Needs `num_workers ≥ 2`. |
 | `seed` | `None` | random seed (`None` = fresh randomness). |
-| `island_shots` | `None` | iteration budget of one island before it is replaced by a fresh one. `None` = an equal share of `num_trials` per worker, capped at 250,000. |
-| `walkers_per_island` | `4` | chains per island: three learning chains with different learning rates and one uniform chain. Larger values reuse these presets in turn. |
-| `num_seeds` | `None` | older alternative to `island_shots`: split the budget into this many waves of `num_workers` islands. |
+| `island_shots` | `None` | step budget of one search before it is replaced by a fresh one. `None` = an equal share of `num_trials` per worker, capped at 250,000. |
+| `walkers_per_island` | `4` | random walks per search: three learning walks with different settings and one non-learning walk. Larger values reuse these settings in turn. |
+| `num_seeds` | `None` | older alternative to `island_shots`: split the budget into this many waves of `num_workers` searches. |
 | `pair_rows` | `None` | vectors defining nontriviality (see `side_distance`). Required for detector error models (`L`). |
 | `collect_codewords` | `True` | keep the set of minimum-weight solutions (otherwise one). |
 | `basis` | `"both"` | `css_distance` only: `"both"`, `"z"` or `"x"`. |
@@ -436,28 +427,28 @@ are listed for completeness.
 
 | parameter | default | meaning |
 |---|---|---|
-| `swaps_per_shot` | `8` | column swaps per iteration, applied as one batch. |
+| `swaps_per_shot` | `8` | column swaps per step, applied as one batch. |
 | `restart_interval` | `None` | iterations between fresh information sets. `None` = `min(2000, max(150, k/3))` with `k` the dimension of the searched space. |
-| `lb_p` | `2` | candidate extraction: `0` rows only, `1` + pairs, `2` + triples. |
+| `lb_p` | `2` | sums of rows examined: `0` single rows only, `1` + pairs, `2` + triples. |
 | `lb_hash_l` | `12` | `ℓ`, the number of random redundant columns used to bucket rows in the collision search [[3](#ref-3)]. `0` = exhaustive pairs and triples among the lightest rows instead. |
 | `lb_M` | `256` | size of the list of lightest rows used for triples. Use `48` with `lb_hash_l=0`. |
 | `lb_R` | `48` | rows used as the first element of a triple. |
 | `lb_hash_windows` | `1` | independent random column sets for bucketing per iteration. |
-| `greedy_passes` | `4` | sweeps of greedy weight reduction per candidate (`0` = off). |
-| `kick_rounds` | `1000` | a learning chain whose best weight has not improved for this many iterations partially forgets and restarts (`0` = off). |
-| `kick_frac` | `0.3` | fraction of the best codeword's columns whose learned weight is reset at such a restart. |
-| `kick_patience` | `2.0` | also wait at least this multiple of the chain's longest gap between improvements so far before restarting. |
+| `greedy_passes` | `4` | sweeps of greedy weight reduction per codeword found (`0` = off). |
+| `kick_rounds` | `1000` | a learning walk whose best weight has not improved for this many steps partially forgets and starts over (`0` = off). |
+| `kick_frac` | `0.3` | fraction of the best codeword's columns whose score is reset when starting over. |
+| `kick_patience` | `2.0` | also wait at least this multiple of the walk's longest gap between improvements so far. |
 | `restart_from_h` | `1` | compute fresh information sets by eliminating the check matrix (cheaper; identical result). |
 | `windows` | `"auto"` | detector time windows: `"auto"` = 5 levels when columns ≥ 6× rows (circuit models), otherwise off. An integer sets the number of levels; `0` = off. |
-| `window_frac` | `0.5` | fraction of islands that run on a window. |
-| `window_rounds` | `5000` | iterations a window island spends on one window before moving to another. |
+| `window_frac` | `0.5` | fraction of searches that run on a window. |
+| `window_rounds` | `5000` | steps a window search spends on one window before moving to another. |
 | `window_min` | `16` | smallest window, in detectors. |
-| `explorer_restart` | `0` | restart interval of the uniform chain (`0` = same as the others). `1` turns it into a fresh uniform information set every iteration. |
-| `max_codewords` | `2000` | minimum-weight solutions stored per island. |
+| `explorer_restart` | `0` | how often the non-learning walk starts over (`0` = same as the others). `1` draws a fresh uniform information set every step. |
+| `max_codewords` | `2000` | minimum-weight solutions stored per search. |
 | `m4ri_k` | `8` | block size of the Method of Four Russians [[9](#ref-9)] in elimination. |
 | `proj_words` | `1` | 64-bit words of random parities used for verification (64 parities per word). |
-| `migrate_interval`, `migrate_boost` | `100`, `0.0` | sharing of the island's best support between its chains (off by default: it made chains converge on one codeword). |
-| `stall_rounds` | `0` | restart a whole island after this many iterations without improvement (off). |
+| `migrate_interval`, `migrate_boost` | `100`, `0.0` | sharing of the best codeword between the walks of a search (off by default: it made the walks converge on one codeword). |
+| `stall_rounds` | `0` | restart a whole search after this many steps without improvement (off). |
 | `greedy_kicks`, `kick_size`, `mix_rate`, `lb_hash_p4` | `0`, `2`, `0.0`, `0` | experimental; not used by the default compact search. |
 
 ---
@@ -570,7 +561,7 @@ syndrome-extraction schedule loses distance to hook errors.
 
 ### Summary
 
-- **Circuits** are where Sisyphus helps most. The learned column weights and the detector
+- **Circuits** are where Sisyphus helps most. The learned column scores and the detector
   time windows find the light fault sets of medium and large memory experiments 3–51×
   faster than dist-m4ri, and they find lighter fault sets than any published bound on the
   largest bivariate bicycle circuits. On small circuits both tools are instantaneous.
@@ -599,12 +590,12 @@ syndrome-extraction schedule loses distance to hook errors.
 sisyphus/
 ├── sisyphus_qec/
 │   ├── search.py         public entry points (css_distance, side_distance) and the
-│   │                     parallel island search (process pool, scheduling, early stop)
+│   │                     parallel searches (process pool, scheduling, early stop)
 │   ├── setup.py          per-side setup: packed check matrix, verification parities,
 │   │                     starting basis
-│   ├── chain_compact.py  search chain on the compact [I | P] form (default)
-│   ├── chain_full.py     search chain on full-width rows (compact=False)
-│   ├── extraction.py     candidate extraction (single rows, sums of rows, collision search)
+│   ├── chain_compact.py  one search (four random walks) on the compact [I | P] form (default)
+│   ├── chain_full.py     the same on full-width rows (compact=False)
+│   ├── extraction.py     light codewords from rows and sums of rows (collision search)
 │   │                     and greedy weight reduction
 │   ├── windows.py        detector time windows for circuit-level models
 │   ├── gf2.py            bit-packed GF(2) linear algebra (Four-Russians row reduction)
@@ -717,6 +708,13 @@ Codes used in the benchmarks:
 16. <a id="ref-16"></a>Z. Lu, W. Li and D.-L. Deng, "Quantum error correction at ultra-low
     overhead", arXiv:2608.02773 (2026). Cornucopia codes; check matrices at
     https://github.com/ZhideLu/Cornucopia_code.
+
+## Acknowledgements
+
+We gratefully acknowledge support from the Anthropic AI for Science program. This algorithm
+was developed in part using various models from the Claude family in an OpenEvolve loop. We
+thank Oscar Higgott, Tomas Jochym-O'Connor, Andi Gu, Nazli Ugur Koyluoglu, Rohan Mehta and
+Nishad Maskara for valuable discussions.
 
 ## Disclosure
 
