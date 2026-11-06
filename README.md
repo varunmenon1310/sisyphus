@@ -16,27 +16,24 @@ bicycle code. Below: the current logical on the 360 qubits (orange) and the lear
 weights (grey). When a climb stalls, part of what was learned is forgotten and the boulder rolls
 back. <a href="docs/animation/make_animation.py">Script</a>.</sub></p>
 
-Sisyphus is a **hill-climbing variant of information-set decoding (ISD)**
-[[1](#ref-1)–[4](#ref-4), [11](#ref-11)]. It combines several algorithmic
-improvements of Prange's algorithm [[1](#ref-1)] (sums of a few rows [[2](#ref-2)], a collision
-search for such sums [[3](#ref-3)], and moving between neighbouring information sets by
-single column swaps [[4](#ref-4)]) and adds **adaptive learning of the information sets**:
-column weights learned from the low-weight codewords already found decide which
-columns enter and leave the information set, so each search climbs toward lighter
-codewords. When a climb stalls, it partially forgets what it learned and restarts,
-as in iterated local search [[12](#ref-12)], and many independent climbs run in parallel
-[[13](#ref-13)]. It is written in Python with
-[Numba](https://numba.pydata.org/)-compiled bit-packed GF(2) kernels.
+Sisyphus is a **hill-climbing variant of information-set decoding (ISD)**. It builds on
+Prange's algorithm and its standard refinements, on the quantum distance tools QDistRnd and
+dist-m4ri, and on classical metaheuristics [[1](#ref-1)–[7](#ref-7), [11](#ref-11)–[14](#ref-14)].
+Like other ISD methods it reads light codewords off systematic generator matrices, using sums
+of a few rows, a collision search for such sums, and single column swaps between neighbouring
+information sets. What it adds is that the **information sets are learned**: weights learned
+from the light codewords found so far decide which columns enter and leave the information
+set, so each search climbs toward lighter codewords. Stalled climbs partially forget what they
+learned and restart, and many independent climbs run in parallel. Sisyphus is written in
+Python with [Numba](https://numba.pydata.org/)-compiled bit-packed GF(2) kernels.
 
-Sisyphus builds directly on two existing tools for computing the distance of quantum
-codes, and we gratefully acknowledge both:
-[**QDistRnd**](https://github.com/QEC-pages/QDistRnd) [[5](#ref-5)], the GAP package that established randomized information-set search as a
-practical method for quantum codes, and
-[**dist-m4ri**](https://github.com/QEC-pages/dist-m4ri) [[6](#ref-6)], its
-fast C successor for codes and circuit-level detector error models, whose
-benchmark set and exact detector-error-model reduction we use for all
-circuit-level comparisons. A recent survey and benchmark of distance-finding
-algorithms for quantum codes and circuits [[7](#ref-7)] was a further guide.
+Sisyphus builds directly on two existing tools for computing the distance of quantum codes,
+and we gratefully acknowledge both: [**QDistRnd**](https://github.com/QEC-pages/QDistRnd),
+the GAP package that established randomized information-set search as a practical method
+for quantum codes, and [**dist-m4ri**](https://github.com/QEC-pages/dist-m4ri), its fast C
+successor for codes and circuit-level detector error models, whose benchmark set and exact
+detector-error-model reduction we use for all circuit-level comparisons. A recent survey and
+benchmark of distance-finding algorithms for quantum codes and circuits was a further guide.
 
 > **If you use Sisyphus in published work, please cite Sisyphus together with the
 > QDistRnd paper and the distance-finding paper of Webster, Jacob and Higgott**
@@ -47,12 +44,12 @@ Highlights (details in [Benchmarks](#benchmarks-and-comparisons)):
 - **Large circuits.** Sisyphus improves several best published circuit-level bounds,
   for example a weight-33 fault set in the 34-round memory circuit of the
   [[756,16,34]] bivariate bicycle code (below the code distance). On one-round circuits
-  of a [[4608,2308,20]] code it reaches weight 20, where dist-m4ri [[6](#ref-6)] stays above 470.
+  of a [[4608,2308,20]] code it reaches weight 20, where dist-m4ri stays above 470.
 - **Medium circuits** (26k–44k faults): it reaches the published distance 3–51× faster than
   dist-m4ri at the median, with a much smaller spread between runs.
 - **Codes.** It reaches the exact distance of codes with up to 4,608 qubits, for example the
   weight-20 logicals of [[4608,2308,20]] and the weight-18 logicals of [[2844,1426,18]], and is
-  more than 1,000× faster than the evolutionary search QDistEvol [[7](#ref-7)] on a single core.
+  more than 1,000× faster than the evolutionary search QDistEvol on a single core.
 
 ---
 
@@ -62,16 +59,15 @@ Highlights (details in [Benchmarks](#benchmarks-and-comparisons)):
 2. [Quick start](#quick-start)
 3. [What Sisyphus computes](#what-sisyphus-computes)
 4. [How the method works](#how-the-method-works)
-5. [How Sisyphus improves on other randomized ISD methods](#how-sisyphus-improves-on-other-randomized-isd-methods)
-6. [API](#api)
-7. [Options and default settings](#options-and-default-settings)
-8. [Benchmarks and comparisons](#benchmarks-and-comparisons)
-9. [Limitations](#limitations)
-10. [Repository layout](#repository-layout)
-11. [Citing](#citing)
-12. [References](#references)
-13. [Disclosure](#disclosure)
-14. [License](#license)
+5. [API](#api)
+6. [Options and default settings](#options-and-default-settings)
+7. [Benchmarks and comparisons](#benchmarks-and-comparisons)
+8. [Limitations](#limitations)
+9. [Repository layout](#repository-layout)
+10. [Citing](#citing)
+11. [References](#references)
+12. [Disclosure](#disclosure)
+13. [License](#license)
 
 ---
 
@@ -205,41 +201,69 @@ It is the basis of most modern ISD implementations.
 
 ### What Sisyphus adds
 
-Sisyphus runs many such random walks at once, and makes each walk **learn where the
-light codewords are**.
+Sisyphus runs many such walks at once and makes each walk **learn where the light codewords
+are**. One iteration of a search chain does five things:
 
-#### 1. Learned column weights: a stochastic hill climb
+1. **Move**: swap 8 columns between the information set and the redundant columns, chosen by
+   the learned column weights (below).
+2. **Extract candidates**: single rows, pairs and triples of rows found by a collision search
+   on `ℓ = 12` random redundant columns (Background 1 and 2).
+3. **Improve** every candidate by greedy weight reduction.
+4. **Verify** that the candidate is a nontrivial solution.
+5. **Learn**: update the column weights from the light rows just seen.
 
-Each search chain keeps a nonnegative **weight for every column** (initially
-zero). Whenever the chain sees a codeword of low weight (close to the best weight
-it has found so far), it increases the weights of all columns in that codeword's
-support, by more for lighter codewords. All weights also decay slowly, so old
-information fades.
+Every 150–2,000 iterations (more for larger codes) the chain draws a fresh information set (a
+restart), also guided by the weights.
 
-The weights steer the walk:
+**Heuristics used, at a glance:**
 
-- **Which column leaves the information set.** A few candidate pivot columns
-  are drawn at random and the one with the **highest** weight leaves
-  (tournament selection [[14](#ref-14)]).
-- **Which column enters.** Among the redundant columns that can replace it,
-  the one with the **lowest** weight enters.
-- **Restarts.** Periodically the chain draws a completely new information set
-  by Gaussian elimination. The column order is sorted by weight, with random
-  noise added, so high-weight columns end up redundant.
+| heuristic | what it does |
+|---|---|
+| learned column weights | a weight per column, reinforced by light codewords; steers which columns leave and enter the information set and the column order at restarts |
+| tournament selection [[14](#ref-14)] | the column that leaves is the heaviest of 8 randomly drawn information-set columns |
+| greedy entering column | the column that enters is the lightest admissible redundant column |
+| random moves | with probability ε (8–25% depending on the chain) a move is uniform instead |
+| iterated local search [[12](#ref-12)] | a stalled chain forgets 30% of the weights on its best codeword and restarts |
+| a non-learning chain | one chain per island always moves uniformly, for diversity |
+| greedy weight reduction | local search on every candidate: add basis rows while the weight drops |
+| island model [[13](#ref-13)] | independent processes of 4 chains, each replaced by a fresh one after 250,000 iterations |
+| detector time windows | circuit-level models only: half of the islands search sub-problems of consecutive detectors |
 
-Columns that appear in light codewords are therefore kept **out of** the
-information set, which is exactly the situation in which the extraction steps of
-Background 1 and 2 can read those codewords off. Each new light codeword reinforces its
-own region, so the walk climbs toward ever lighter codewords: a **stochastic hill
-climb**, guided by a memory of where light codewords were found. With some
-probability (8–25% depending on the chain) a move is made uniformly at random
-instead, which keeps the walk from becoming deterministic.
+#### 1. How the information sets are learned
+
+Each chain keeps a weight `θ_c ≥ 0` for every column `c`, initially zero. After every
+iteration:
+
+- **Decay**: `θ_c ← (1 − δ) θ_c` for all columns, so old information fades.
+- **Reinforce**: let `w*` be the lightest weight this chain has found so far. Every nontrivial
+  row of the current systematic form with weight `w ≤ w* + m` adds `η · (w* + m − w + 1)` to
+  `θ_c` for every column `c` in its support. Only rows close to the best count, and lighter
+  rows count more.
+
+The weights then steer every choice of the walk:
+
+- **Which column leaves the information set**: 8 information-set columns are drawn at random
+  and the one with the **highest** `θ` leaves.
+- **Which column enters**: among the redundant columns that can replace it (those where its
+  row has a 1), the one with the **lowest** `θ` enters.
+- **Restarts**: columns are ordered by `θ` plus random noise and eliminated in that order, so
+  high-weight columns end up redundant.
+
+Columns that appear in light codewords are therefore kept **out of** the information set,
+which is exactly the situation in which the extraction step can read those codewords off.
+Each light codeword reinforces its own region, so the walk climbs toward lighter codewords: a
+**stochastic hill climb** guided by a memory of where light codewords were found.
+
+The three learning chains of an island use different settings
+(learning rate `η`, decay `δ`, margin `m`, random-move probability `ε`):
+`(1.0, 0.010, 3, 0.10)`, `(1.5, 0.006, 2, 0.08)` and `(1.0, 0.010, 3, 0.25)`; the fourth chain
+does not learn (`ε = 1`).
 
 #### 2. Escaping local optima
 
 A pure hill climb gets stuck. The learned weights tend to concentrate on the
 support of the best codeword found so far, and the chain then keeps rediscovering
-that one codeword. Sisyphus handles this the way iterated local search [[12](#ref-12)] does.
+that one codeword. Sisyphus handles this the way iterated local search does.
 When a chain's best weight has not improved for a long time (both a fixed number
 of iterations and a multiple of the longest gap between its previous
 improvements), the chain **forgets part of its learned weights** on its best
@@ -261,7 +285,7 @@ turns a near-miss into a lighter codeword.
 #### 4. Parallel search: the island model
 
 Chains are organized as in the island model of parallel evolutionary
-algorithms [[13](#ref-13)]. Each process (an *island*) runs four chains in lockstep: three
+algorithms. Each process (an *island*) runs four chains in lockstep: three
 learning chains with different learning rates and the uniform chain. Islands are
 independent and do not exchange information. Each island runs for a fixed budget
 of iterations (by default at most 250,000 per island) and is then replaced by a
@@ -317,41 +341,6 @@ observable rows). Each candidate carries its 64 parities against them, updated
 alongside the rows at the cost of one extra 64-bit word per row. A nonzero parity **proves** that the candidate is
 nontrivial, so Sisyphus never reports a stabilizer. A genuine logical is missed only
 with probability 2⁻⁶⁴.
-
----
-
-## How Sisyphus improves on other randomized ISD methods
-
-| | basic ISD [[1](#ref-1)] | sums of rows [[2](#ref-2)] | collision search [[3](#ref-3)] | column-swap walk [[4](#ref-4)] | dist-m4ri [[6](#ref-6)] | **Sisyphus** |
-|---|---|---|---|---|---|---|
-| Next information set | random, full elimination | random, full elimination | random, full elimination | one column swap | random (uniform or a random window of columns), full elimination | one column swap, plus periodic restarts |
-| Candidates per step | rows | rows + sums of `p` rows | rows + colliding pairs | rows + colliding pairs | rows + pairs | rows + colliding pairs + colliding triples |
-| Choice of columns | uniform | uniform | uniform | uniform | uniform or window | **learned from light codewords found so far** |
-| Local optima | — | — | — | — | — | **partial forgetting + restart (iterated local search)** |
-| Candidate improvement | — | — | — | — | — | **greedy weight reduction** |
-| Circuit-level models | — | — | — | — | column windows | **detector time windows** |
-| Parallelism | — | — | — | — | threads | independent islands of chains |
-
-In words:
-
-1. **Directed rather than blind sampling.** Classical ISD samples information
-   sets uniformly. Its cost per success is fixed by the code's weight
-   distribution and does not improve as the search proceeds. Sisyphus's walks
-   accumulate knowledge: each light codeword makes nearby light codewords easier
-   to find. On codes whose minimum-weight logicals cluster on structured
-   supports (bivariate bicycle, generalized bicycle, affine-permutation codes),
-   this is why Sisyphus finds the weight-20 Z logicals of [[4608,2308,≤20]] 2–5×
-   faster than dist-m4ri's random sampling.
-2. **Cheap steps.** Single column swaps [[4](#ref-4)] and restarts from the
-   check matrix keep each step cheap. The compact `[I | P]` storage cuts memory
-   and time by `n / (n − k)`.
-3. **Robustness of a population.** Several learning rates, one uniform chain,
-   iterated-local-search perturbations and many independent islands keep the
-   search from collapsing onto one local optimum, which is the typical failure of
-   a single hill climb.
-4. **Locality for circuits.** Detector time windows turn one huge problem into
-   many small ones that contain the light fault sets. This exploits the
-   space-time structure of circuit noise, which uniform sampling ignores.
 
 ---
 
