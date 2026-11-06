@@ -9,12 +9,12 @@ the code distance**, together with an explicit, verified witness for every bound
 
 <p align="center">
   <img src="docs/sisyphus_climb.gif" width="680"
-       alt="Sisyphus pushes a boulder up a terraced hill; each ledge is a lighter logical operator">
+       alt="A figure pushes a boulder up a terraced hill; each ledge is a lighter logical operator">
 </p>
 <p align="center"><sub>Each ledge is a lighter logical operator of the [[360,12,24]] bivariate
-bicycle code (real codewords, shown below the hill on the 360 qubits); blue shading marks the
-learned column weights. When a climb stalls, part of what was learned is forgotten and the climb
-restarts. Script: <a href="docs/animation/make_animation.py"><code>docs/animation/make_animation.py</code></a>.</sub></p>
+bicycle code. Below: the current logical on the 360 qubits (orange) and the learned column
+weights (grey). When a climb stalls, part of what was learned is forgotten and the boulder rolls
+back. <a href="docs/animation/make_animation.py">Script</a>.</sub></p>
 
 Sisyphus is a **hill-climbing variant of information-set decoding (ISD)**
 [[1](#ref-1)–[4](#ref-4), [11](#ref-11)]. It combines several algorithmic

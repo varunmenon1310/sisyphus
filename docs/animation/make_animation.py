@@ -4,9 +4,9 @@ lighter and lighter logical operators of the [[360,12,24]] bivariate bicycle cod
 The codewords are real: a plain random information-set search (one fresh information set per
 step) on the code records every improvement of the lightest X logical, and Sisyphus itself supplies
 the last ledge, a logical of weight 24 = d. The panel below shows the current codeword on the
-360 qubits (two 6 x 30 blocks, x^i y^j at row j, column i) and, in blue, a schematic of the
-learned column weights: reinforced by every light codeword, partially forgotten when a climb
-stalls (the boulder rolls back), as in the search itself.
+360 qubits (two 6 x 30 blocks, x^i y^j at row j, column i; accent = support) over a grey
+schematic of the learned column weights: reinforced by every light codeword, partially
+forgotten when a climb stalls (the boulder rolls back), as in the search itself.
 
     python docs/animation/make_animation.py [out.gif]      (numpy, matplotlib, pillow)
 """
@@ -102,86 +102,87 @@ if len(trace) > 8:                  # keep the first, the last and evenly spaced
 W = [int(c.sum()) for c in trace]
 K = len(W)
 
-# ----------------------------------------------------------------- the hill
-LEDGE, SLOPE, RISE = 0.75, 0.95, 1.0
-pts = [(-0.6, 0.0), (0.6, 0.0)]
-x = 0.6
-ledge_mid = [0.0]
-for i in range(1, K):
-    x += SLOPE
-    pts.append((x, i * RISE))
-    ledge_mid.append(x + LEDGE / 2)
-    x += LEDGE
-    pts.append((x, i * RISE))
-pts.append((x + 0.5, (K - 1) * RISE))
-P = np.array(pts)
-seg = np.diff(P, axis=0)
-seglen = np.hypot(seg[:, 0], seg[:, 1])
-cum = np.concatenate([[0], np.cumsum(seglen)])
+# ----------------------------------------------------------------- style
+INK, PAPER, HILL, MUTED, ACCENT = "#232323", "#fafaf7", "#ecebe6", "#9b9a95", "#e0603a"
+plt.rcParams.update({"font.family": "DejaVu Sans", "text.antialiased": True,
+                     "lines.antialiased": True, "patch.antialiased": True})
+
+# ----------------------------------------------------------------- the hill: smooth terraces
+PITCH, SLOPE_W, RISE = 1.55, 0.95, 0.62
+X_LEDGE = np.arange(K) * PITCH
 
 
-def s_of_x(xq):
-    """Arc length at horizontal position xq."""
-    j = np.searchsorted(P[:, 0], xq) - 1
-    j = int(np.clip(j, 0, len(seg) - 1))
-    t = (xq - P[j, 0]) / seg[j, 0]
-    return cum[j] + t * seglen[j]
+def smoothstep(t):
+    t = np.clip(t, 0.0, 1.0)
+    return t * t * (3 - 2 * t)
 
 
-def point(s):
-    s = float(np.clip(s, 0, cum[-1]))
-    j = int(np.clip(np.searchsorted(cum, s) - 1, 0, len(seg) - 1))
-    t = (s - cum[j]) / seglen[j]
-    p = P[j] + t * seg[j]
-    ang = np.arctan2(seg[j, 1], seg[j, 0])
-    return p, ang
+def height(x):
+    x = np.asarray(x, float)
+    y = np.zeros_like(x)
+    for i in range(1, K):
+        c = (i - 0.5) * PITCH
+        y += RISE * smoothstep((x - c) / SLOPE_W + 0.5)
+    return y
 
 
-S_LEDGE = [s_of_x(m) for m in ledge_mid]
-R_BALL = 0.26
+XS = np.linspace(-1.2, X_LEDGE[-1] + 1.2, 6000)
+YS = height(XS)
+ARC = np.concatenate([[0], np.cumsum(np.hypot(np.diff(XS), np.diff(YS)))])
+
+
+def at_s(s):
+    """Ground point and tangent angle at arc length s."""
+    x = np.interp(s, ARC, XS)
+    dx = 1e-3
+    ang = np.arctan2(height(x + dx) - height(x - dx), 2 * dx)
+    return np.array([x, float(height(x))]), float(ang)
+
+
+S_LEDGE = [float(np.interp(x, XS, ARC)) for x in X_LEDGE]
+R_BALL = 0.17
 
 # ----------------------------------------------------------------- timeline
-# each frame: (s_ball, ledge index shown, caption, theta-event)
-frames = []
-STALL_AT = max(2, K - 3)            # the climb from this ledge stalls once and rolls back
+frames = []                       # (s, ledge shown, event)
+STALL_AT = max(2, K - 3)
 BACK_TO = max(1, STALL_AT - 2)
 
 
-def hold(n_fr, s, lvl, cap, ev=None):
-    for t in range(n_fr):
-        frames.append((s, lvl, cap, ev if t == 0 else None))
+def ease(u):
+    return 0.5 - 0.5 * np.cos(np.pi * u)
 
 
-def move(n_fr, s0, s1, lvl, cap, ease=True):
-    for t in range(1, n_fr + 1):
-        u = t / n_fr
-        u = 0.5 - 0.5 * np.cos(np.pi * u) if ease else u
-        frames.append((s0 + (s1 - s0) * u, lvl, cap, None))
+def hold(m, s, lv, ev=None):
+    for t in range(m):
+        frames.append((s, lv, ev if t == 0 else None))
 
 
-hold(10, S_LEDGE[0], 0, f"start: a random information set gives a logical of weight {W[0]}", "learn")
+def move(m, s0, s1, lv, curve=ease):
+    for t in range(1, m + 1):
+        frames.append((s0 + (s1 - s0) * curve(t / m), lv, None))
+
+
+hold(18, S_LEDGE[0], 0, "learn")
 lvl = 0
+stalled = False
 while lvl < K - 1:
-    if lvl == STALL_AT and not any(f[3] == "kick" for f in frames):
-        mid = 0.5 * (S_LEDGE[lvl] + S_LEDGE[lvl + 1])
-        move(10, S_LEDGE[lvl], mid, lvl, "climbing ...")
-        for t in range(8):          # pushing, no progress
-            frames.append((mid + 0.03 * np.sin(t * 2.2), lvl, "stalled: no lighter logical for a while", None))
-        move(14, mid, S_LEDGE[BACK_TO], lvl, "partial forgetting of the learned weights, restart",
-             ease=False)
-        frames[-14] = (frames[-14][0], lvl, frames[-14][2], "kick")
-        hold(6, S_LEDGE[BACK_TO], lvl, "the lightest logical found so far is kept")
-        move(12, S_LEDGE[BACK_TO], S_LEDGE[lvl], lvl, "climbing again, on a different path")
-    move(12, S_LEDGE[lvl], S_LEDGE[lvl + 1], lvl, "climbing ...")
+    if lvl == STALL_AT and not stalled:
+        stalled = True
+        mid = S_LEDGE[lvl] + 0.55 * (S_LEDGE[lvl + 1] - S_LEDGE[lvl])
+        move(24, S_LEDGE[lvl], mid, lvl)
+        for t in range(16):                       # straining, no progress
+            frames.append((mid - 0.015 * (1 - np.cos(t * 0.8)), lvl, None))
+        frames.append((mid, lvl, "kick"))
+        move(26, mid, S_LEDGE[BACK_TO], lvl, curve=lambda u: u * u)   # rolls back, accelerating
+        hold(12, S_LEDGE[BACK_TO], lvl)
+        move(40, S_LEDGE[BACK_TO], S_LEDGE[lvl], lvl)
+    move(28, S_LEDGE[lvl], S_LEDGE[lvl + 1], lvl)
     lvl += 1
-    cap = (f"lighter logical found: weight {W[lvl]}  (verified)" if lvl < K - 1 else
-           f"weight {W[lvl]} = d of the [[360,12,24]] bivariate bicycle code")
-    hold(9 if lvl < K - 1 else 28, S_LEDGE[lvl], lvl, cap, "learn")
+    hold(14 if lvl < K - 1 else 48, S_LEDGE[lvl], lvl, "learn")
 
-# learned weights theta per frame
 theta = np.zeros(n)
 thetas = []
-for s, lv, cap, ev in frames:
+for s, lv, ev in frames:
     if ev == "learn":
         theta = 0.6 * theta + trace[lv]
     elif ev == "kick":
@@ -191,97 +192,89 @@ for s, lv, cap, ev in frames:
         theta *= 0.7
     thetas.append(theta / max(theta.max(), 1e-9))
 
-# ----------------------------------------------------------------- drawing
-fig = plt.figure(figsize=(8.0, 5.6), dpi=100)
-ax = fig.add_axes([0.0, 0.33, 1.0, 0.67])
-axg = fig.add_axes([0.06, 0.03, 0.88, 0.25])
-xmin, xmax = P[0, 0], P[-1, 0] + 0.3
-ymin, ymax = -0.8, (K - 1) * RISE + 1.6
-ax.set_xlim(xmin, xmax); ax.set_ylim(ymin, ymax); ax.axis("off")
+# ----------------------------------------------------------------- figure
+fig = plt.figure(figsize=(8.0, 4.4), dpi=110, facecolor=PAPER)
+ax = fig.add_axes([0.03, 0.30, 0.94, 0.68], facecolor=PAPER)
+axg = fig.add_axes([0.07, 0.04, 0.86, 0.20], facecolor=PAPER)
+xmin, xmax = XS[0], XS[-1]
+ax.set_xlim(xmin, xmax)
+ax.set_ylim(-0.45, (K - 1) * RISE + 0.85)
 ax.set_aspect("equal")
-sky = np.linspace(0, 1, 256)[:, None]
-ax.imshow(sky, extent=[xmin, xmax, ymin, ymax], origin="lower", cmap="Blues", vmin=-1.5, vmax=2.2,
-          aspect="auto", zorder=0)
-ground = np.vstack([P, [P[-1, 0] + 1, ymin], [P[0, 0] - 1, ymin]])
-ax.add_patch(Polygon(ground, closed=True, fc="#8d6e4f", ec="#4e3b2a", lw=2, zorder=1))
+ax.axis("off")
+ax.fill_between(XS, YS, -1, color=HILL, lw=0, zorder=1)
+ax.plot(XS, YS, color=INK, lw=1.4, solid_capstyle="round", zorder=2)
 for i in range(K):
-    xl = ledge_mid[i]
-    ax.text(xl, i * RISE - 0.33, f"w={W[i]}", ha="center", va="top", fontsize=9, color="#f5ead8",
-            fontweight="bold", zorder=2)
-ax.text(xmin + 0.15, ymax - 0.25, "Sisyphus: a hill climb over information sets", fontsize=13,
-        fontweight="bold", va="top", color="#1f2d3d")
-cap_txt = ax.text(xmin + 0.15, ymax - 0.75, "", fontsize=10.5, va="top", color="#1f2d3d")
-flag_pole, = ax.plot([], [], color="#333", lw=2, zorder=3)
-flag = Polygon([[0, 0], [0, 0], [0, 0]], closed=True, fc="#e4572e", zorder=3)
-ax.add_patch(flag)
-ball = Circle((0, 0), R_BALL, fc="#9aa0a6", ec="#3c4043", lw=1.5, zorder=5)
+    ax.text(X_LEDGE[i], i * RISE - 0.13, f"{W[i]}", ha="center", va="top", fontsize=8.5,
+            color=MUTED, zorder=2)
+readout = ax.text(xmax - 0.05, (K - 1) * RISE + 0.78, "", ha="right", va="top", fontsize=11,
+                  color=INK, family="DejaVu Sans Mono", zorder=6)
+ball = Circle((0, 0), R_BALL, fc=INK, ec="none", zorder=5)
 ax.add_patch(ball)
-crack, = ax.plot([], [], color="#3c4043", lw=1.2, zorder=6)
-body, = ax.plot([], [], color="#202124", lw=4, solid_capstyle="round", zorder=4)
-legs, = ax.plot([], [], color="#202124", lw=3, solid_capstyle="round", zorder=4)
-arms, = ax.plot([], [], color="#202124", lw=2.5, solid_capstyle="round", zorder=4)
-head = Circle((0, 0), 0.10, fc="#202124", zorder=4)
+spot = Circle((0, 0), 0.032, fc=PAPER, ec="none", zorder=6)
+ax.add_patch(spot)
+stroke = dict(color=INK, solid_capstyle="round", solid_joinstyle="round", zorder=4)
+torso, = ax.plot([], [], lw=2.8, **stroke)
+legs, = ax.plot([], [], lw=2.2, **stroke)
+arm, = ax.plot([], [], lw=2.0, **stroke)
+head = Circle((0, 0), 0.065, fc=INK, ec="none", zorder=4)
 ax.add_patch(head)
+summit = Circle((X_LEDGE[-1] + 0.45, (K - 1) * RISE + 0.0), 0.05, fc=ACCENT, ec="none", zorder=3,
+                visible=False)
+ax.add_patch(summit)
 
-# grid panel: 6 rows x (30 + gap + 30) columns
-axg.set_xlim(-0.5, 2 * L_ + 0.5); axg.set_ylim(-0.5, 5.5); axg.axis("off"); axg.set_aspect("equal")
-cells, dots = [], []
+# qubit panel: two 6 x 30 blocks
+axg.set_xlim(-0.6, 2 * L_ + 0.6)
+axg.set_ylim(-0.6, M_ - 0.4)
+axg.set_aspect("equal")
+axg.axis("off")
+base = np.array(matplotlib.colors.to_rgb(HILL))
+dark = np.array(matplotlib.colors.to_rgb(MUTED))
+acc = np.array(matplotlib.colors.to_rgb(ACCENT))
+cells = []
 for q in range(n):
     b, r = divmod(q, L_ * M_)
     i, j = divmod(r, M_)
     cx = i + (L_ + 1 if b else 0)
-    cells.append(axg.add_patch(Rectangle((cx - 0.45, j - 0.45), 0.9, 0.9, fc="white", ec="#c9d3dd",
-                                         lw=0.6)))
-    dots.append(axg.add_patch(Rectangle((cx - 0.28, j - 0.28), 0.56, 0.56, fc="#e4572e", ec="none",
-                                        visible=False)))
-axg.text(L_, 5.95, f"current logical on the {n} qubits (orange); learned column weights (blue)",
-         ha="center", va="bottom", fontsize=9, color="#1f2d3d")
-cmap = plt.get_cmap("Blues")
+    cells.append(axg.add_patch(Rectangle((cx - 0.42, M_ - 1 - j - 0.42), 0.84, 0.84,
+                                         fc=HILL, ec="none")))
 
 
 def draw(k):
-    s, lv, cap, _ = frames[k]
-    p, ang = point(s)
+    s, lv, _ = frames[k]
+    p, ang = at_s(s)
+    u = np.array([np.cos(ang), np.sin(ang)])
     nrm = np.array([-np.sin(ang), np.cos(ang)])
-    c = p + nrm * R_BALL
+    c = p + R_BALL * nrm
     ball.center = c
     roll = -s / R_BALL
-    crack.set_data([c[0] - 0.8 * R_BALL * np.cos(roll), c[0] + 0.8 * R_BALL * np.cos(roll)],
-                   [c[1] - 0.8 * R_BALL * np.sin(roll), c[1] + 0.8 * R_BALL * np.sin(roll)])
-    # Sisyphus stands downhill of the boulder, leaning into it, hands on the boulder
-    u = np.array([np.cos(ang), np.sin(ang)])                 # uphill tangent
-    cp = c + R_BALL * (-0.80 * u + 0.60 * nrm)               # hands on the upper back of the boulder
-    tdir = np.array([np.cos(ang + 0.55), np.sin(ang + 0.55)])  # torso leaning into the push
-    sh = cp - 0.24 * u + 0.02 * nrm
-    hip = sh - 0.40 * tdir
-    hd = sh + 0.10 * tdir + 0.09 * nrm
-    s_hip = s - float(np.dot(c - hip, u))
-    stride = 0.10 * np.sin(k * 0.8) if frames[k][3] is None else 0.0
-    foot1, _ = point(s_hip - 0.34 + stride)                   # back leg, pushing
-    foot2, _ = point(s_hip + 0.02 - stride)                   # front leg
-    knee2 = 0.5 * (hip + foot2) + 0.07 * u + 0.03 * nrm
-    hand = cp
-    body.set_data([hip[0], sh[0]], [hip[1], sh[1]])
-    legs.set_data([foot1[0], hip[0], knee2[0], foot2[0]], [foot1[1], hip[1], knee2[1], foot2[1]])
-    arms.set_data([sh[0], hand[0]], [sh[1], hand[1]])
+    spot.center = c + 0.6 * R_BALL * np.array([np.cos(roll), np.sin(roll)])
+    # the pusher: hands on the upper back of the boulder, body leaning into it
+    hand = c + R_BALL * (-0.72 * u + 0.70 * nrm)
+    lean = np.deg2rad(46) + 0.5 * ang            # torso angle above the horizontal
+    tdir = np.array([np.cos(lean), np.sin(lean)])
+    sh = hand + np.array([-0.15, 0.11])
+    hip = sh - 0.30 * tdir
+    hd = sh + 0.095 * tdir + np.array([0.0, 0.035])
+    s_hip = float(np.interp(hip[0], XS, ARC))
+    phase = 9.0 * s
+    f1, _ = at_s(s_hip - 0.24 + 0.08 * np.sin(phase))
+    f2, _ = at_s(s_hip + 0.04 - 0.08 * np.sin(phase))
+    knee = 0.5 * (hip + f2) + 0.07 * u + 0.02 * nrm
+    torso.set_data([hip[0], sh[0]], [hip[1], sh[1]])
+    legs.set_data([f1[0], hip[0], knee[0], f2[0]], [f1[1], hip[1], knee[1], f2[1]])
+    arm.set_data([sh[0], hand[0]], [sh[1], hand[1]])
     head.center = hd
-    cap_txt.set_text(cap)
-    if lv == K - 1 and abs(s - S_LEDGE[-1]) < 1e-6:
-        fx = ledge_mid[-1] + 0.45
-        fy = (K - 1) * RISE
-        flag_pole.set_data([fx, fx], [fy, fy + 0.8])
-        flag.set_xy([[fx, fy + 0.8], [fx + 0.4, fy + 0.66], [fx, fy + 0.52]])
-    else:
-        flag_pole.set_data([], [])
-        flag.set_xy([[0, -9], [0, -9], [0, -9]])
+    done = lv == K - 1 and abs(s - S_LEDGE[-1]) < 1e-9
+    readout.set_text(f"w = {W[lv]}" + (" = d" if done else ""))
+    readout.set_color(ACCENT if done else INK)
+    summit.set_visible(done)
     th = thetas[k]
     cw = trace[lv]
     for q in range(n):
-        cells[q].set_facecolor(cmap(0.08 + 0.75 * th[q]))
-        dots[q].set_visible(bool(cw[q]))
+        cells[q].set_facecolor(acc if cw[q] else base + (dark - base) * (0.85 * th[q]))
     return []
 
 
-anim = FuncAnimation(fig, draw, frames=len(frames), interval=90, blit=False)
-anim.save(OUT, writer=PillowWriter(fps=11))
+anim = FuncAnimation(fig, draw, frames=len(frames), interval=40, blit=False)
+anim.save(OUT, writer=PillowWriter(fps=25), savefig_kwargs={"facecolor": PAPER})
 print("wrote", OUT, len(frames), "frames", flush=True)
