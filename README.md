@@ -1,69 +1,58 @@
-# Sisyphus — a fast circuit-level distance estimator
+# Sisyphus: a fast circuit-level distance estimator
 
-Sisyphus is a **fast circuit-level distance estimator** for quantum error-correcting
-codes. Given a noisy syndrome-extraction circuit as a detector error model (DEM), it
-finds low-weight sets of faults that flip a logical observable without triggering any
-detector; given a CSS code, it finds low-weight logical operators. It reports the
-lightest ones it finds, so it gives **upper bounds on the circuit-level distance and on
-the code distance**, together with an explicit, verified witness for every bound.
+Sisyphus estimates the circuit-level distance of quantum error-correction circuits and the
+distance of CSS codes. Given a noisy syndrome-extraction circuit as a detector error model
+(DEM), it finds small sets of faults that flip a logical observable without triggering any
+detector; given a CSS code, it finds low-weight logical operators. The lightest solution
+found is an upper bound on the distance, and every bound comes with a witness that can be
+checked independently.
 
 <p align="center">
   <img src="docs/sisyphus_climb.gif" width="680"
        alt="A figure pushes a boulder up a terraced hill; each ledge is a lighter logical operator">
 </p>
 
-Sisyphus is a **hill-climbing variant of information-set decoding (ISD)**. It builds on
-Prange's algorithm and its standard refinements, on the quantum distance tools QDistRnd,
-dist-m4ri and QDistEvol, and on classical metaheuristics
-[[1](#ref-1)–[7](#ref-7), [11](#ref-11)–[14](#ref-14)].
-Like other ISD methods it reads light codewords off systematic generator matrices, using sums
-of a few rows, a collision search for such sums, and single column swaps between neighbouring
-information sets. What it adds is that the **information sets are learned**: weights learned
-from the light codewords found so far decide which columns enter and leave the information
-set, so each search climbs toward lighter codewords. Stalled climbs partially forget what they
-learned and restart, and many independent climbs run in parallel. Sisyphus is written in
-Python with [Numba](https://numba.pydata.org/)-compiled bit-packed GF(2) kernels.
+Sisyphus is a hill-climbing variant of information-set decoding (ISD). It builds on Prange's
+algorithm and its standard refinements, on the quantum distance tools QDistRnd, dist-m4ri and
+QDistEvol, and on classical metaheuristics
+[[1](#ref-1)–[7](#ref-7), [11](#ref-11)–[14](#ref-14)]. As in other ISD methods, light
+codewords are read off a systematic generator matrix, as single rows or as sums of a few rows
+found by a collision search, and the search moves between neighbouring information sets by
+column swaps. Sisyphus learns where to move: per-column scores, raised by every light
+codeword found, decide which columns leave and enter the information set. Searches that stop
+improving forget part of what they learned and restart, and many independent searches run in
+parallel. The code is Python with [Numba](https://numba.pydata.org/)-compiled, bit-packed
+GF(2) kernels.
 
-Sisyphus builds directly on three existing tools for computing the distance of quantum
-codes, and we gratefully acknowledge all of them:
-[**QDistRnd**](https://github.com/QEC-pages/QDistRnd), the GAP package that established
-randomized information-set search as a practical method for quantum codes;
-[**dist-m4ri**](https://github.com/QEC-pages/dist-m4ri), its fast C successor for codes and
-circuit-level detector error models, whose benchmark set and exact detector-error-model
-reduction we use for all circuit-level comparisons; and
-[**QDistEvol**](https://github.com/m-webster/codeDistancePYPI), which evolves a population of
-information sets instead of drawing them independently, part of the `codedistance` package
-that accompanies a recent survey and benchmark of distance-finding algorithms for quantum codes
-and circuits. The idea that information sets can be improved from one trial to the next,
-rather than sampled blindly, is common to QDistEvol and Sisyphus.
+Sisyphus builds on three existing tools: [QDistRnd](https://github.com/QEC-pages/QDistRnd),
+the GAP package that made randomized information-set search practical for quantum codes;
+[dist-m4ri](https://github.com/QEC-pages/dist-m4ri), its C successor for codes and
+circuit-level models, whose benchmark circuits and DEM reduction we use; and
+[QDistEvol](https://github.com/m-webster/codeDistancePYPI), which evolves a population of
+information sets instead of drawing them independently. If you use Sisyphus in published
+work, please cite it together with QDistRnd and the distance-finding paper of Webster, Jacob
+and Higgott (see [Citing](#citing)).
 
-> **If you use Sisyphus in published work, please cite Sisyphus together with the
-> QDistRnd paper and the distance-finding paper of Webster, Jacob and Higgott**
-> (BibTeX in [Citing](#citing)).
+Results, from the [benchmarks](#benchmarks) against dist-m4ri, QDistEvol and sqetch on the
+same problems and hardware:
 
-Highlights (details in [Benchmarks](#benchmarks-and-comparisons), where Sisyphus, dist-m4ri,
-QDistEvol and sqetch are compared on the same problems and hardware):
-
-- **Circuits.** On the larger memory experiments Sisyphus is the only one of the four tools that
-  reaches the target within the time limit, and it improves several best published
-  circuit-level bounds, for example a weight-31 fault set in the 34-round memory circuit of the
-  [[756,16,34]] bivariate bicycle code, below the code distance.
-- **One-round circuits of large codes.** On the [[4608,2308,20]] code it reaches weight 22 in an
-  hour and 20 in longer runs, where the other tools stay above 170.
-- **Codes.** It reaches the distance of every code tested, up to [[4608,2308,20]], and is the
-  fastest on the [[2844,1426,18]] Cornucopia code.
-
----
+- On the larger memory-experiment circuits, Sisyphus is the only one of the four tools that
+  reaches the target weight within the time limit. It improves several published
+  circuit-level bounds, including a weight-31 fault set in the 34-round memory circuit of the
+  [[756,16,34]] bivariate bicycle code.
+- On a one-round circuit of a [[4608,2308,20]] code it reaches weight 22 within an hour and
+  20 in longer runs; the other tools stay above 170.
+- It reaches the distance of every code tested, up to [[4608,2308,20]].
 
 ## Contents
 
 1. [Installation](#installation)
 2. [Quick start](#quick-start)
-3. [What Sisyphus computes](#what-sisyphus-computes)
-4. [How the method works](#how-the-method-works)
+3. [Problem](#problem)
+4. [Method](#method)
 5. [API](#api)
-6. [Options and default settings](#options-and-default-settings)
-7. [Benchmarks and comparisons](#benchmarks-and-comparisons)
+6. [Options](#options)
+7. [Benchmarks](#benchmarks)
 8. [Limitations](#limitations)
 9. [Repository layout](#repository-layout)
 10. [Citing](#citing)
@@ -71,8 +60,6 @@ QDistEvol and sqetch are compared on the same problems and hardware):
 12. [Acknowledgements](#acknowledgements)
 13. [Disclosure](#disclosure)
 14. [License](#license)
-
----
 
 ## Installation
 
@@ -83,9 +70,8 @@ pip install -e .            # numpy, numba, scipy
 pip install -e ".[circuits]"  # adds stim, for circuit-level instances
 ```
 
-Python ≥ 3.10. The first call compiles the kernels with Numba (about 30 s). The
-compiled code is cached next to the package, so later runs start in about a
-second.
+Python ≥ 3.10. The first call compiles the kernels with Numba (about 30 s); the compiled code
+is cached next to the package.
 
 ## Quick start
 
@@ -129,217 +115,108 @@ print("circuit distance <=", res.distance)
 Complete scripts are in [`examples/`](examples/): `code_distance.py` (gross code,
 distance 12) and `circuit_distance.py` (surface-code memory circuit, distance 5).
 
----
+## Problem
 
-## What Sisyphus computes
-
-**Code distance.** For a CSS code with parity-check matrices `Hx` and `Hz`, an
-X-type logical operator is a binary vector `c` with `Hz c = 0` that is not a sum
-of rows of `Hx` (it commutes with every Z check but is not an X stabilizer). Its
-weight is the number of qubits it acts on. The X distance is the minimum weight
-of such a vector. The Z distance swaps the roles of `Hx` and `Hz`. The code
+**Code distance.** For a CSS code with check matrices `Hx` and `Hz`, an X-type logical
+operator is a binary vector `c` with `Hz c = 0` that is not a sum of rows of `Hx`. The X
+distance is the minimum weight of such a vector; the Z distance swaps `Hx` and `Hz`; the code
 distance is the smaller of the two.
 
-**Circuit-level distance.** A detector error model [[8](#ref-8)] lists the possible faults
-of a noisy circuit and, for each one, the detectors and logical observables it
-flips. With one column per fault, write `H` for the detector matrix and `L` for
-the observable matrix. The circuit-level distance is the smallest number of
-faults that together flip no detector and at least one logical observable: the
-minimum weight of `c` with `H c = 0` and `L c ≠ 0`. It is usually smaller than
-the code distance, because some single faults (for example "hook" errors on
-syndrome-extraction ancillas) spread to several data qubits.
+**Circuit-level distance.** A detector error model [[8](#ref-8)] lists the faults of a noisy
+circuit and the detectors and logical observables each fault flips. With one column per fault,
+let `H` be the detector matrix and `L` the observable matrix. The circuit-level distance is
+the minimum weight of `c` with `H c = 0` and `L c ≠ 0`: the fewest faults that flip an
+observable without flipping a detector. It is usually below the code distance, because single
+faults such as hook errors on ancilla qubits spread to several data qubits.
 
-Both are the same problem: **find the minimum weight of a vector in the
-kernel of a binary matrix that is not in a given subspace of trivial vectors**.
-This problem is NP-hard in general, so practical tools search for light
-solutions. Sisyphus never certifies that nothing lighter exists. Every reported
-weight is an **upper bound**, and it comes with a witness vector that you can
-check independently.
+Both are instances of one problem: the minimum weight of a vector in the kernel of a binary
+matrix outside a given subspace. The problem is NP-hard, and Sisyphus does not prove that no
+lighter vector exists.
 
----
+## Method
 
-## How the method works
+### Information-set decoding
 
-This section first recalls the standard ISD algorithms that Sisyphus builds on, then
-describes what Sisyphus adds. No prior knowledge of ISD is assumed.
-
-### Background 1: information sets
-
-Let `G` be a generator matrix of the code to be searched (for X logicals, a basis
-of the kernel of `Hz`), with `k` rows and `n` columns. Gaussian elimination brings
-`G` into **systematic form**: after a suitable choice of `k` columns, called the
-**information set**, those columns form an identity matrix. Each row of the
-systematic form then has a single 1 inside the information set and arbitrary
-entries on the remaining `n − k` **redundant columns**.
-
-The key observation [[1](#ref-1)]: if a low-weight codeword happens to have
-**no more than one** nonzero entry inside the information set, it is equal to a
-single row of the systematic form, and it can simply be read off. The basic
-algorithm repeats: pick a random information set, eliminate, look at the rows,
-keep the lightest. A codeword of weight `w` is found once an information set
-avoids almost all of its support, which for small `w` happens with a probability
-that can be estimated in closed form.
-
-### Background 2: sums of rows and collision search
-
-A first refinement [[2](#ref-2)] also checks sums of `p = 2` or `3` rows, so it also finds
-codewords with 2 or 3 entries in the information set. This raises the success
-probability per elimination considerably, at the cost of more work per step.
-
-A second refinement [[3](#ref-3)] makes the search for sums of rows efficient. Rows are sorted
-into buckets by their values on a small random set of `ℓ` redundant columns. Two
-rows in the same bucket sum to zero on those `ℓ` columns, which makes their sum
-much more likely to be light. Only such pairs (a **collision search**) are
-examined, instead of all pairs.
-
-### Background 3: moving between information sets
-
-A full Gaussian elimination per step costs `O(k n²)` bit operations.
-It was later observed [[4](#ref-4)] that one can instead move to a
-neighbouring information set by **swapping a single column**: one column leaves
-the information set and one redundant column enters it. Updating the systematic
-form costs one row operation per affected row. The search then becomes a
-**random walk (Markov chain) over information sets**, with a much cheaper step.
-It is the basis of most modern ISD implementations.
+Let `G` be a `k × n` generator matrix of the space searched (for X logicals, a basis of
+`ker Hz`). Gaussian elimination on a chosen set of `k` columns, the information set, brings
+`G` to systematic form: those columns become an identity matrix, and each row has a single 1
+inside the information set. A codeword with at most one nonzero entry inside the information
+set is then one of the rows [[1](#ref-1)]. Checking sums of two or three rows also finds
+codewords with two or three entries inside [[2](#ref-2)]. Sorting rows by their values on `ℓ`
+random redundant columns and combining only rows in the same bucket makes this search
+efficient [[3](#ref-3)]. Instead of a full elimination per trial, one can move to a
+neighbouring information set by swapping one column in and one out, which costs one row
+operation per affected row [[4](#ref-4)]; the search becomes a random walk over information
+sets.
 
 ### What Sisyphus adds
 
-Sisyphus runs many of these random walks at once and makes each walk **learn where the light
-codewords are**. One step of a walk does five things:
+One step of a random walk in Sisyphus:
 
-1. **Move**: swap 8 columns between the information set and the redundant columns, chosen by
-   learned column scores (below).
-2. **Look for light codewords** among single rows of the systematic form and among sums of two
-   or three rows, found by the collision search on `ℓ = 12` random redundant columns
-   (Background 1 and 2).
-3. **Improve** each codeword found by greedy weight reduction.
-4. **Verify** that it is a nontrivial solution.
-5. **Learn**: update the column scores from the light rows just seen.
+1. swap 8 columns between the information set and the redundant columns, chosen by learned
+   column scores;
+2. look for light codewords among single rows and among sums of two or three rows (collision
+   search on `ℓ = 12` columns);
+3. reduce each codeword found greedily, by adding rows of the basis while its weight drops;
+4. verify that it is a nontrivial solution;
+5. update the column scores.
 
-Every 150–2,000 steps (more for larger codes) the walk starts over from a fresh information
-set, also chosen using the scores.
+Every 150–2,000 steps, depending on the size of the code, the walk starts again from a fresh
+information set, also chosen by the scores. The heuristics involved:
 
-**Heuristics used, at a glance:**
-
-| heuristic | what it does |
+| heuristic | role |
 |---|---|
-| learned column scores | one score per column, raised by every light codeword that uses the column; decides which columns leave and enter the information set |
-| tournament selection [[14](#ref-14)] | the column that leaves is the highest-scoring of 8 randomly drawn information-set columns |
-| greedy choice of the entering column | the column that enters is the lowest-scoring admissible redundant column |
-| random moves | with probability ε (8–25%) a move is made uniformly at random instead |
-| iterated local search [[12](#ref-12)] | a walk that stops improving forgets 30% of the scores on its best codeword and starts over |
-| one non-learning walk | in each group of four walks, one always moves uniformly at random, for diversity |
-| greedy weight reduction | each codeword found is reduced by adding rows of the basis while its weight drops |
-| independent parallel searches [[13](#ref-13)] | each worker process runs four walks and is replaced by a freshly seeded one after 250,000 steps |
-| detector time windows | circuit-level models only: half of the searches work on the faults of a range of consecutive detectors |
+| learned column scores | choose the leaving column (highest score among 8 drawn at random: tournament selection [[14](#ref-14)]) and the entering column (lowest score); with probability ε = 0.08–0.25 a move is uniform instead |
+| iterated local search [[12](#ref-12)] | a walk that stops improving resets part of its scores and restarts |
+| a non-learning walk | one of every four walks moves uniformly at random |
+| greedy weight reduction | local search on every codeword found |
+| independent parallel searches [[13](#ref-13)] | each worker runs four walks and is replaced by a freshly seeded one after 250,000 steps |
+| detector time windows | for circuits, half of the searches work on a range of consecutive detectors |
 
-#### 1. How the information sets are learned
-
-Each walk keeps a score `θ_c ≥ 0` for every column `c`, initially zero. After every step:
-
-- **Decay**: `θ_c ← (1 − δ) θ_c` for all columns, so old information fades.
-- **Reinforce**: let `w*` be the lightest weight this walk has found so far. Every nontrivial
-  row of the current systematic form with weight `w ≤ w* + m` adds `η · (w* + m − w + 1)` to
-  `θ_c` for every column `c` in its support. Only rows close to the best count, and lighter
-  rows count more.
-
-The scores then steer every choice of the walk:
-
-- **Which column leaves the information set**: 8 information-set columns are drawn at random
-  and the one with the **highest** score leaves.
-- **Which column enters**: among the redundant columns that can replace it (those where its
-  row has a 1), the one with the **lowest** score enters.
-- **Starting over**: columns are ordered by score plus random noise and eliminated in that
-  order, so high-scoring columns end up redundant.
-
-Columns that appear in light codewords are therefore kept **out of** the information set,
-which is exactly the situation in which those codewords appear as single rows or as sums of a
-few rows. Each light codeword raises the scores of its own columns, so the walk climbs toward
-lighter codewords: a **stochastic hill climb** guided by a memory of where light codewords
-were found.
-
-The three learning walks of a group use different settings (learning rate `η`, decay `δ`,
-margin `m`, random-move probability `ε`): `(1.0, 0.010, 3, 0.10)`, `(1.5, 0.006, 2, 0.08)` and
+**Learning the information sets.** Each walk keeps a score `θ_c ≥ 0` for every column `c`,
+initially zero. After every step, all scores decay, `θ_c ← (1 − δ) θ_c`, and every nontrivial
+row of weight `w ≤ w* + m`, where `w*` is the walk's best weight so far, adds
+`η (w* + m − w + 1)` to the scores of the columns in its support. The entering column is
+chosen among the redundant columns where the leaving column's row has a 1, and a restart
+eliminates the columns in order of score plus random noise. Columns of
+light codewords are thus kept out of the information set, where the read-off finds them, and
+each light codeword makes nearby lighter ones easier to find. The three learning walks of a
+search use `(η, δ, m, ε)` = `(1.0, 0.010, 3, 0.10)`, `(1.5, 0.006, 2, 0.08)` and
 `(1.0, 0.010, 3, 0.25)`; the fourth walk does not learn (`ε = 1`).
 
-#### 2. Escaping local optima
+**Escaping local optima.** Left alone, the scores concentrate on the columns of the best
+codeword so far and the walk keeps finding it again. When a walk's best weight has not
+improved for 1,000 steps and for twice its longest earlier gap between improvements, it resets
+the scores of a random 30% of its best codeword's columns and restarts.
 
-A pure hill climb gets stuck: the scores concentrate on the columns of the best codeword found
-so far, and the walk keeps finding that same codeword again. Sisyphus handles this as iterated
-local search does. When a walk's best weight has not improved for a long time (both a fixed
-number of steps and a multiple of the longest gap between its earlier improvements), the walk
-**resets the scores of 30% of its best codeword's columns** and starts over from a fresh
-information set. It keeps a rough memory of the region but leaves the exact local optimum.
+**Parallel searches.** A search is a group of four walks in one worker process. Searches do
+not exchange information. Each runs for at most 250,000 steps and is then replaced by a
+freshly seeded one until the budget `num_trials` is spent; on hard instances the outcome
+varies more between searches than within one, so many moderate searches do better than a few
+long ones. All searches stop as soon as one reaches `cutoff`.
 
-In addition, one walk in every group of four does not learn and moves uniformly at random. It
-keeps the search diverse and helps collect many distinct minimum-weight codewords on small
-codes.
+**Detector time windows.** The light fault sets of a memory experiment usually span a few
+rounds. On circuit-level models, half of the searches work on a window of consecutive
+detectors and keep only the faults whose detectors all lie in it; a solution of the window
+problem, padded with zeros, solves the full problem. Windows come in five sizes, from half to
+1/32 of the detectors, with 50% overlap, and each window search moves to a new random window
+periodically. Window problems are 10–50× smaller than the full model. Windows are used when
+the matrix has at least 6× more columns than rows, which holds for circuit-level models and
+not for codes.
 
-#### 3. Greedy weight reduction
+**Linear algebra.** Matrices are stored as 64-bit words, and elimination and batched column
+swaps use the Method of Four Russians [[9](#ref-9), [10](#ref-10)]. Only the redundant part
+`P` of the systematic form `[I | P]` is stored, so work and memory scale with `n − k` rather
+than `n`: 4× less on rate-1/2 codes and about 10× less on circuit-level models. A fresh
+information set is computed by eliminating the check matrix in the chosen column order, which
+gives `[I | P]` without a kernel basis and is 16–35× cheaper on circuit-level models than
+reducing a stored generator matrix.
 
-Every codeword found is improved by **local search**: Sisyphus repeatedly adds any row of the
-current basis that lowers the weight while keeping the vector a nontrivial solution, until no
-row helps. This often turns a near miss into a lighter codeword.
-
-#### 4. Independent parallel searches
-
-Each worker process runs one search: a group of four walks (three learning walks with
-different settings and the non-learning one) that take steps in turn. Searches are independent
-and do not exchange information, as in the island model of parallel evolutionary algorithms.
-Each search runs for a fixed number of steps (at most 250,000 by default) and is then replaced
-by a freshly seeded one, until the total budget `num_trials` is spent. On hard instances the
-outcome varies much more between searches than within one, so many moderate searches beat a
-few long ones. When any search reaches the `cutoff` weight, all of them stop within one step.
-
-#### 5. Circuit-level instances: detector time windows
-
-In a detector error model, detectors are ordered in time (round by round), and
-the light undetectable fault sets are local in time. A low-weight fault set
-typically spans only a few rounds of a long memory experiment. For such
-instances Sisyphus runs **half of its searches on time windows**. A window is a range
-of consecutive detectors, and its sub-problem contains only the faults whose
-detectors all lie inside the window. Windows come in five sizes (halves, quarters, ... down to 1/32
-of the detectors, each size with 50% overlap between neighbouring windows), and
-each window search moves to a new random window periodically. A solution of a window sub-problem, padded with zeros, is a solution of
-the full problem, and it is verified as such.
-
-A window is 10–50× smaller than the full model, so searches on it run 10–50×
-more steps per second and concentrate on the right region immediately.
-This is what lets Sisyphus solve large circuit instances such as the 34-round
-[[756,16,34]] circuit (13,230 detectors × 129,276 faults after reduction). By
-default (`windows="auto"`) windows are used only when the matrix has at least
-6× more columns than rows, which is the shape of circuit-level models and not of
-codes.
-
-#### 6. Efficient linear algebra
-
-- **Bit-packed GF(2) arithmetic.** All matrices are stored as 64-bit words, so
-  one XOR processes 64 entries. Gaussian elimination and the batched column
-  swaps use the Method of Four Russians [[9](#ref-9), [10](#ref-10)].
-- **Compact systematic form.** A systematic generator matrix is `[I | P]` up to
-  column order, so only the `P` part (the redundant columns) is stored. Per-step
-  work and memory scale with the number of redundant columns `n − k` (the rank
-  of the check matrix) instead of `n`. That is 4× less on rate-1/2 quantum codes
-  and about 10× less on circuit-level models, where `n` is 8–13 times the number
-  of detectors.
-- **Restarts from the check matrix.** A fresh information set is computed by
-  eliminating the parity-check matrix `H` in the chosen column order. The
-  systematic generator matrix follows directly, without ever computing a basis
-  of the kernel. On circuit-level models this is 16–35× cheaper than reducing a
-  stored generator matrix.
-
-#### 7. Verification of every reported codeword
-
-A vector in the kernel can still be a stabilizer (a trivial solution). Sisyphus
-checks nontriviality with a **randomized test**. It draws 64 random vectors from
-the space that detects nontrivial solutions (for codes, random elements of the
-kernel of the opposite check matrix; for circuits, random combinations of the
-observable rows). Each row carries its 64 parities against them, updated
-alongside the row at the cost of one extra 64-bit word per row. A nonzero parity **proves** that the vector is
-nontrivial, so Sisyphus never reports a stabilizer. A genuine logical is missed only
-with probability 2⁻⁶⁴.
-
----
+**Verification.** A vector in the kernel may still be trivial (a stabilizer). Each row carries
+its parities against 64 random vectors that detect nontriviality (random elements of the
+kernel of the opposite check matrix for codes; random combinations of observable rows for
+circuits). A nonzero parity proves that the vector is nontrivial, so Sisyphus never reports a
+stabilizer; a nontrivial vector is missed with probability 2⁻⁶⁴.
 
 ## API
 
@@ -390,27 +267,17 @@ DEM, the observable matrix).
 - `verify_fault_set(dem, error_indices)` is an independent check on the DEM:
   the faults are distinct, flip no detector, and flip at least one observable.
 
-Matrices are passed as dense 0/1 numpy arrays and bit-packed internally. A
-reduced circuit model of 13,230 × 129,276 needs about 1.7 GB as a dense
-`uint8` array.
+Matrices are passed as dense 0/1 numpy arrays and bit-packed internally.
 
----
+## Options
 
-## Options and default settings
+The defaults were chosen by equal-wall-clock comparisons on codes and circuit-level models of
+all sizes in the benchmarks, and we recommend keeping them. To tune them for a family of
+instances, use an automated search scored by time to target over several seeds rather than
+manual changes.
 
-> **The defaults work well across codes of very different sizes and across
-> circuit-level instances, and we do not recommend changing them.** They were
-> chosen by equal-wall-clock comparisons on small, medium and large codes and on
-> circuit-level models, and every default is the best setting found in those
-> comparisons. The search parameters interact in ways that are hard to tune by
-> hand. If you need to tune them for a specific family of instances, use an
-> automated hyperparameter search (for example an agentic optimization loop that
-> scores settings by time-to-target over several seeds), not one-off manual
-> changes.
-
-The options you normally set are the **run options**. The **search parameters**
-can be passed as keyword arguments to `css_distance` and `side_distance`; they
-are listed for completeness.
+Run options are the ones normally set. Search parameters can also be passed as keyword
+arguments to `css_distance` and `side_distance`.
 
 ### Run options
 
@@ -434,12 +301,12 @@ are listed for completeness.
 | parameter | default | meaning |
 |---|---|---|
 | `swaps_per_shot` | `8` | column swaps per step, applied as one batch. |
-| `restart_interval` | `None` | iterations between fresh information sets. `None` = `min(2000, max(150, k/3))` with `k` the dimension of the searched space. |
+| `restart_interval` | `None` | steps between fresh information sets. `None` = `min(2000, max(150, k/3))` with `k` the dimension of the searched space. |
 | `lb_p` | `2` | sums of rows examined: `0` single rows only, `1` + pairs, `2` + triples. |
 | `lb_hash_l` | `12` | `ℓ`, the number of random redundant columns used to bucket rows in the collision search [[3](#ref-3)]. `0` = exhaustive pairs and triples among the lightest rows instead. |
 | `lb_M` | `256` | size of the list of lightest rows used for triples. Use `48` with `lb_hash_l=0`. |
 | `lb_R` | `48` | rows used as the first element of a triple. |
-| `lb_hash_windows` | `1` | independent random column sets for bucketing per iteration. |
+| `lb_hash_windows` | `1` | independent random column sets for bucketing per step. |
 | `greedy_passes` | `4` | sweeps of greedy weight reduction per codeword found (`0` = off). |
 | `kick_rounds` | `1000` | a learning walk whose best weight has not improved for this many steps partially forgets and starts over (`0` = off). |
 | `kick_frac` | `0.3` | fraction of the best codeword's columns whose score is reset when starting over. |
@@ -457,34 +324,31 @@ are listed for completeness.
 | `stall_rounds` | `0` | restart a whole search after this many steps without improvement (off). |
 | `greedy_kicks`, `kick_size`, `mix_rate`, `lb_hash_p4` | `0`, `2`, `0.0`, `0` | experimental; not used by the default compact search. |
 
----
-
-## Benchmarks and comparisons
+## Benchmarks
 
 Sisyphus, [dist-m4ri](https://github.com/QEC-pages/dist-m4ri) [[6](#ref-6)],
-QDistEvol [[7](#ref-7)] and [sqetch](https://github.com/a7b/yarn/tree/main/sqetch) were run on the
-same 13 problems under the same rules:
+QDistEvol [[7](#ref-7)] and [sqetch](https://github.com/a7b/yarn/tree/main/sqetch) were run on
+the same 13 problems:
 
-- **Hardware.** The three CPU tools each get 16 cores of the same node type (Intel Xeon 8480):
-  Sisyphus runs 16 worker processes, dist-m4ri (v0.14.7, random information sets, default
-  settings) 16 threads, and QDistEvol (`codedistance` v0.0.8, default settings) 16 independent
-  runs in parallel, timed to the first run that reaches the target. sqetch runs only on GPUs and
-  gets one NVIDIA A100 (sketch dimension 64, or the largest that fits on the GPU).
-- **Stopping rule.** Each run stops at the target weight: the exact distance where it is known,
-  otherwise the lightest weight known. Three runs per tool and problem.
-- **Entries.** A time range is the fastest and slowest of the runs that reached the target, with
-  "(k of 3)" when only k runs did. "best w" is the lightest weight found when no run reached the
-  target within the time limit. Times exclude loading the problem and compiling. Every reported
-  solution was verified independently.
+- The CPU tools each get 16 cores of one Intel Xeon 8480 node: 16 worker processes for
+  Sisyphus, 16 threads for dist-m4ri (v0.14.7, random information sets, default settings), and
+  16 independent runs for QDistEvol (`codedistance` v0.0.8, default settings), timed to the
+  first run that reaches the target. sqetch runs only on GPUs and gets one NVIDIA A100 (sketch
+  dimension 64, or the largest that fits).
+- Each run stops at the target weight, which is the exact distance where known and otherwise
+  the lightest known weight. Each tool has three runs per problem.
+- A time range gives the fastest and slowest run that reached the target, with "(k of 3)" if
+  only k did. "best w" is the lightest weight found when no run reached the target. Times
+  exclude loading and compilation. All solutions were verified.
 
-Codes are given by their parameters; circuits are memory experiments of the dist-m4ri benchmark
-set (SI1000 noise) or single noisy rounds of syndrome extraction, with their size
-(detectors × faults) after exact reduction to one basis.
+Circuits are memory experiments from the dist-m4ri benchmark set (SI1000 noise) or single
+noisy rounds of syndrome extraction; sizes are detectors × faults after exact reduction to one
+basis.
 
 | problem | target | limit | Sisyphus | dist-m4ri | QDistEvol | sqetch |
 |---|---|---|---|---|---|---|
 | gross [[144,12,12]] | 12 | 10 min | 0.03–0.04 s | < 0.01 s | < 0.01 s | 0.01 s |
-| [[756,16,34]] bivariate bicycle | 34 | 10 min | 0.07–0.2 s | 0.1–0.5 s | 2.4–5.8 s | 80 s (1 of 3) |
+| [[756,16,34]] bivariate bicycle [[15](#ref-15)] | 34 | 10 min | 0.07–0.2 s | 0.1–0.5 s | 2.4–5.8 s | 80 s (1 of 3) |
 | [[1152,580,12]] affine-permutation | 12 | 10 min | 0.04–0.09 s | 0.01 s | 0.4–3.2 s | 0.09–0.2 s |
 | [[2304,1156,14]] affine-permutation | 14 | 10 min | 0.1–0.2 s | 0.04–0.1 s | 18–26 s (2 of 3) | 2.6–83 s |
 | [[2844,1426,18]] Cornucopia [[16](#ref-16)] | 18 | 10 min | **2–3 s** | 14–40 s | best 24 | best 22 |
@@ -506,31 +370,27 @@ weight 20 on the [[4608,2308,20]] circuit in 4 of 8 runs, where dist-m4ri stays 
 on a [[2232,1120,16]] two-block group-algebra code it reaches 13 (Z basis) and 14 (X basis) in
 every run, matching dist-m4ri's best (13 in every run; 14 in 2 of 4).
 
-**Summary.**
+Summary:
 
-- **Small problems** (codes up to a few thousand qubits, circuits up to about 10⁴ faults):
+- On small problems (codes up to a few thousand qubits, circuits up to about 10⁴ faults),
   Sisyphus and dist-m4ri reach the target in under a second, dist-m4ri usually first because of
-  its lower start-up cost. QDistEvol and sqetch are as fast on the smallest codes but take minutes
-  or stop above the target on the small circuits.
-- **Larger circuits** are where Sisyphus is ahead. It is the only tool that reaches the target
-  on the double-gross and [[360,12,24]] memory circuits, and on the largest circuits it finds
-  much lighter fault sets than the other tools in the same time (31 vs 45 on the 34-round
-  [[756,16,34]] circuit, 22 vs 174–574 on the one-round [[4608,2308,20]] circuit).
-- **Large codes** are mixed: Sisyphus is fastest on [[2844,1426,18]], the two tools overlap on
-  the X side of [[4608,2308,20]], and dist-m4ri is faster on its Z side.
-- **QDistEvol and sqetch** reach the distance of codes up to [[2304,1156,14]] (not in every run)
-  but not of the larger codes or of the larger circuits within these limits. sqetch's fixed sketch of one basis plateaus above the
-  distance (22 on [[2844,1426,18]], 128 on the Z side of [[4608,2308,20]]), and it cannot hold
-  the largest circuit models in GPU memory.
-- **Upper bounds only.** dist-m4ri also proves lower bounds with its connected-cluster
-  algorithm; Sisyphus, QDistEvol and sqetch do not.
+  its lower start-up cost. QDistEvol and sqetch are as fast on the smallest codes but take
+  minutes or stop above the target on the small circuits.
+- On larger circuits Sisyphus is ahead: it is the only tool that reaches the target on the
+  double-gross and [[360,12,24]] circuits, and it finds the lightest fault sets on the two
+  largest circuits.
+- On large codes the results are mixed. Sisyphus is fastest on [[2844,1426,18]], it overlaps
+  with dist-m4ri on the X side of [[4608,2308,20]], and dist-m4ri is faster on the Z side.
+- QDistEvol and sqetch reach the distance of codes up to [[2304,1156,14]], not in every run,
+  and not of the larger codes or circuits. sqetch searches a fixed sketch of one basis and
+  levels off above the distance (22 on [[2844,1426,18]], 128 on the Z side of
+  [[4608,2308,20]]).
 
 ### Bounds tighter than the best published
 
-All found by Sisyphus. Each witness is in
-[`benchmarks/witnesses/`](benchmarks/witnesses/) as a list of faults (the
-detectors and observables each fault flips) and can be checked against the
-original circuits with Stim:
+Found by Sisyphus. Each witness in [`benchmarks/witnesses/`](benchmarks/witnesses/) lists its
+faults (the detectors and observables each one flips) and can be checked against the original
+circuits with Stim:
 
 ```bash
 python benchmarks/verify_witnesses.py /path/to/dist-m4ri/benchmark
@@ -544,21 +404,18 @@ python benchmarks/verify_witnesses.py /path/to/dist-m4ri/benchmark
 | `double_gross_288_12_18_uniform_r18`, X basis | not computed | **16** |
 | `gross_144_12_12_uniform_r12`, X basis | ≤ 11 | **10** |
 
-The 31 for the [[756,16,34]] circuit lies below the code distance: its syndrome-extraction
-schedule loses distance to hook errors.
-
----
+The weight-31 fault set of the [[756,16,34]] circuit is below the code distance; the
+syndrome-extraction schedule loses distance to hook errors.
 
 ## Limitations
 
-- **Upper bounds only.** Sisyphus finds light solutions and verifies them; it cannot
-  prove that nothing lighter exists. Use an exact method (for example
-  dist-m4ri's connected-cluster search) for lower bounds.
-- **Dense input.** Matrices are passed as dense arrays (1 byte per entry before
-  packing), which matters above about 10⁵ × 10⁵.
-- **`time_limit` needs `num_workers ≥ 2`**; a single in-process search runs
-  until its iteration budget is spent.
-- **First call compiles** the kernels (about 30 s; cached afterwards).
+- Sisyphus gives upper bounds only. For lower bounds use an exact method, for example the
+  connected-cluster search of dist-m4ri.
+- Matrices are passed as dense arrays (one byte per entry before packing), which matters above
+  about 10⁵ × 10⁵. A reduced circuit model of 13,230 × 129,276 takes about 1.7 GB.
+- `time_limit` needs `num_workers ≥ 2`; a single in-process search runs until its budget is
+  spent.
+- The first call compiles the kernels (about 30 s); later runs use the cache.
 
 ## Repository layout
 
@@ -590,8 +447,8 @@ Run the tests with `python -m pytest tests/`.
 
 ## Citing
 
-If you use Sisyphus in published work, please cite Sisyphus, the QDistRnd paper, and the
-distance-finding paper of Webster, Jacob and Higgott:
+Please cite Sisyphus, the QDistRnd paper and the distance-finding paper of Webster, Jacob and
+Higgott:
 
 ```bibtex
 @software{sisyphus,
