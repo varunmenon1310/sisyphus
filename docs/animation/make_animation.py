@@ -213,13 +213,26 @@ ax.add_patch(ball)
 spot = Circle((0, 0), 0.032, fc=PAPER, ec="none", zorder=6)
 ax.add_patch(spot)
 stroke = dict(color=INK, solid_capstyle="round", solid_joinstyle="round", zorder=4)
-torso = Polygon(np.zeros((4, 2)), closed=True, fc=INK, ec=INK, lw=1.0, joinstyle="round",
-                zorder=4)                     # tapered: broad shoulders, narrower waist
+torso = Polygon(np.zeros((5, 2)), closed=True, fc=INK, ec=INK, lw=1.0, joinstyle="round",
+                zorder=4)                     # broad chest and shoulders, narrower waist
 ax.add_patch(torso)
-legs, = ax.plot([], [], lw=3.4, **stroke)
-arms, = ax.plot([], [], lw=2.8, **stroke)
-head = Circle((0, 0), 0.068, fc=INK, ec="none", zorder=4)
+# limbs as tapered segments with rounded joints: thigh/calf of each leg, upper arm/forearm
+SEGS = {name: ax.add_patch(Polygon(np.zeros((4, 2)), closed=True, fc=INK, ec=INK, lw=0.8,
+                                   joinstyle="round", zorder=4))
+        for name in ("thigh1", "calf1", "thigh2", "calf2", "upper", "fore", "neck")}
+JOINTS = [ax.add_patch(Circle((0, 0), 0.01, fc=INK, ec="none", zorder=4)) for _ in range(7)]
+head = Circle((0, 0), 0.074, fc=INK, ec="none", zorder=4)
 ax.add_patch(head)
+
+
+def limb(name, p, q, w_p, w_q):
+    """Tapered segment from p (half-width w_p) to q (half-width w_q)."""
+    d = q - p
+    d = d / max(np.hypot(*d), 1e-9)
+    nv = np.array([-d[1], d[0]])
+    SEGS[name].set_xy([p + w_p * nv, q + w_q * nv, q - w_q * nv, p - w_p * nv])
+
+
 summit = Circle((X_LEDGE[-1] + 0.45, (K - 1) * RISE + 0.0), 0.05, fc=ACCENT, ec="none", zorder=3,
                 visible=False)
 ax.add_patch(summit)
@@ -260,24 +273,34 @@ def draw(k):
     tdir = np.array([np.cos(lean), np.sin(lean)])
     sh = hand + np.array([-0.12, 0.22])
     hip = sh - 0.27 * tdir
-    hd = sh + 0.095 * tdir + np.array([0.0, 0.035])
+    hd = sh + 0.11 * tdir + np.array([0.0, 0.05])
     s_hip = float(np.interp(hip[0], XS, ARC))
     phase = 9.0 * s
     f1, _ = at_s(s_hip - 0.19 + 0.07 * np.sin(phase))
     f2, _ = at_s(s_hip + 0.06 - 0.07 * np.sin(phase))
     knee = 0.5 * (hip + f2) + 0.08 * u + 0.03 * nrm
     perp = np.array([-tdir[1], tdir[0]])          # normal to the torso (towards the back)
-    torso.set_xy([sh + 0.050 * perp, sh - 0.040 * perp, hip - 0.028 * perp, hip + 0.036 * perp])
+    chest = hip + 0.62 * (sh - hip)
+    torso.set_xy([sh + 0.050 * perp, chest + 0.068 * perp, hip + 0.044 * perp,
+                  hip - 0.036 * perp, sh - 0.046 * perp])
     knee1 = 0.5 * (hip + f1) + 0.015 * nrm         # back leg nearly straight: it pushes
-    legs.set_data([f1[0], knee1[0], hip[0], knee[0], f2[0]],
-                  [f1[1], knee1[1], hip[1], knee[1], f2[1]])
-    elbow = 0.5 * (sh + hand) - 0.045 * nrm + 0.01 * u   # elbows bent down under the load
-    arms.set_data([sh[0], elbow[0], hand[0]], [sh[1], elbow[1], hand[1]])
+    elbow = 0.5 * (sh + hand) - 0.05 * nrm + 0.01 * u    # elbows bent under the load
+    neck = sh + 0.05 * tdir + 0.02 * np.array([0.0, 1.0])
+    limb("thigh1", hip, knee1, 0.040, 0.028)
+    limb("calf1", knee1, f1, 0.026, 0.016)
+    limb("thigh2", hip, knee, 0.040, 0.028)
+    limb("calf2", knee, f2, 0.026, 0.016)
+    limb("upper", sh, elbow, 0.030, 0.022)
+    limb("fore", elbow, hand, 0.021, 0.016)
+    limb("neck", sh, neck, 0.024, 0.022)
+    for jc, (pt, r) in zip(JOINTS, [(hip, 0.040), (knee1, 0.027), (knee, 0.028), (sh, 0.042),
+                                    (elbow, 0.022), (f1, 0.016), (f2, 0.016)]):
+        jc.center, jc.radius = pt, r
     head.center = hd
     done = lv == K - 1 and abs(s - S_LEDGE[-1]) < 1e-9
     readout.set_text(f"w = {W[lv]}" + (" = d" if done else ""))
     readout.set_color(ACCENT if done else INK)
-    legend.set_text(f"orange: the qubits of a weight-{W[lv]} logical operator of the [[360,12,24]] bivariate bicycle code")
+    legend.set_text(f"Weight-{W[lv]} logical X operator of the [[360,12,24]] bivariate bicycle code")
     summit.set_visible(done)
     th = thetas[k]
     cw = trace[lv]
