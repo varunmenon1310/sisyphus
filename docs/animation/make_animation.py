@@ -213,11 +213,11 @@ ax.add_patch(ball)
 spot = Circle((0, 0), 0.032, fc=PAPER, ec="none", zorder=6)
 ax.add_patch(spot)
 stroke = dict(color=INK, solid_capstyle="round", solid_joinstyle="round", zorder=4)
-torso = Polygon(np.zeros((5, 2)), closed=True, fc=INK, ec=INK, lw=1.0, joinstyle="round",
+torso = Polygon(np.zeros((6, 2)), closed=True, fc=INK, ec=INK, lw=1.0, joinstyle="round",
                 zorder=4)                     # broad chest and shoulders, narrower waist
 ax.add_patch(torso)
 # limbs as tapered segments with rounded joints: thigh/calf of each leg, upper arm/forearm
-SEGS = {name: ax.add_patch(Polygon(np.zeros((4, 2)), closed=True, fc=INK, ec=INK, lw=0.8,
+SEGS = {name: ax.add_patch(Polygon(np.zeros((6, 2)), closed=True, fc=INK, ec=INK, lw=0.8,
                                    joinstyle="round", zorder=4))
         for name in ("thigh1", "calf1", "thigh2", "calf2", "upper", "fore", "neck")}
 JOINTS = [ax.add_patch(Circle((0, 0), 0.01, fc=INK, ec="none", zorder=4)) for _ in range(7)]
@@ -225,12 +225,16 @@ head = Circle((0, 0), 0.074, fc=INK, ec="none", zorder=4)
 ax.add_patch(head)
 
 
-def limb(name, p, q, w_p, w_q):
-    """Tapered segment from p (half-width w_p) to q (half-width w_q)."""
+def limb(name, p, q, w_p, w_q, w_m=None, at=0.45):
+    """Tapered segment from p (half-width w_p) to q (half-width w_q), bulging to w_m at
+    fraction `at` of its length (a muscle belly)."""
     d = q - p
     d = d / max(np.hypot(*d), 1e-9)
     nv = np.array([-d[1], d[0]])
-    SEGS[name].set_xy([p + w_p * nv, q + w_q * nv, q - w_q * nv, p - w_p * nv])
+    m = p + at * (q - p)
+    w_m = max(w_p, w_q) if w_m is None else w_m
+    SEGS[name].set_xy([p + w_p * nv, m + w_m * nv, q + w_q * nv,
+                       q - w_q * nv, m - w_m * nv, p - w_p * nv])
 
 
 summit = Circle((X_LEDGE[-1] + 0.45, (K - 1) * RISE + 0.0), 0.05, fc=ACCENT, ec="none", zorder=3,
@@ -281,20 +285,20 @@ def draw(k):
     knee = 0.5 * (hip + f2) + 0.08 * u + 0.03 * nrm
     perp = np.array([-tdir[1], tdir[0]])          # normal to the torso (towards the back)
     chest = hip + 0.62 * (sh - hip)
-    torso.set_xy([sh + 0.050 * perp, chest + 0.068 * perp, hip + 0.044 * perp,
-                  hip - 0.036 * perp, sh - 0.046 * perp])
+    torso.set_xy([sh + 0.066 * perp, chest + 0.090 * perp, hip + 0.050 * perp,
+                  hip - 0.042 * perp, chest - 0.058 * perp, sh - 0.060 * perp])
     knee1 = 0.5 * (hip + f1) + 0.015 * nrm         # back leg nearly straight: it pushes
     elbow = 0.5 * (sh + hand) - 0.05 * nrm + 0.01 * u    # elbows bent under the load
     neck = sh + 0.05 * tdir + 0.02 * np.array([0.0, 1.0])
-    limb("thigh1", hip, knee1, 0.040, 0.028)
-    limb("calf1", knee1, f1, 0.026, 0.016)
-    limb("thigh2", hip, knee, 0.040, 0.028)
-    limb("calf2", knee, f2, 0.026, 0.016)
-    limb("upper", sh, elbow, 0.030, 0.022)
-    limb("fore", elbow, hand, 0.021, 0.016)
-    limb("neck", sh, neck, 0.024, 0.022)
-    for jc, (pt, r) in zip(JOINTS, [(hip, 0.040), (knee1, 0.027), (knee, 0.028), (sh, 0.042),
-                                    (elbow, 0.022), (f1, 0.016), (f2, 0.016)]):
+    limb("thigh1", hip, knee1, 0.050, 0.032, 0.058, 0.35)
+    limb("calf1", knee1, f1, 0.030, 0.017, 0.040, 0.30)
+    limb("thigh2", hip, knee, 0.050, 0.032, 0.058, 0.35)
+    limb("calf2", knee, f2, 0.030, 0.017, 0.040, 0.30)
+    limb("upper", sh, elbow, 0.040, 0.026, 0.046, 0.45)     # biceps
+    limb("fore", elbow, hand, 0.026, 0.018, 0.032, 0.30)
+    limb("neck", sh, neck, 0.034, 0.030)
+    for jc, (pt, r) in zip(JOINTS, [(hip, 0.050), (knee1, 0.031), (knee, 0.032), (sh, 0.060),
+                                    (elbow, 0.027), (f1, 0.018), (f2, 0.018)]):
         jc.center, jc.radius = pt, r
     head.center = hd
     done = lv == K - 1 and abs(s - S_LEDGE[-1]) < 1e-9

@@ -13,8 +13,9 @@ the code distance**, together with an explicit, verified witness for every bound
 </p>
 
 Sisyphus is a **hill-climbing variant of information-set decoding (ISD)**. It builds on
-Prange's algorithm and its standard refinements, on the quantum distance tools QDistRnd and
-dist-m4ri, and on classical metaheuristics [[1](#ref-1)–[7](#ref-7), [11](#ref-11)–[14](#ref-14)].
+Prange's algorithm and its standard refinements, on the quantum distance tools QDistRnd,
+dist-m4ri and QDistEvol, and on classical metaheuristics
+[[1](#ref-1)–[7](#ref-7), [11](#ref-11)–[14](#ref-14)].
 Like other ISD methods it reads light codewords off systematic generator matrices, using sums
 of a few rows, a collision search for such sums, and single column swaps between neighbouring
 information sets. What it adds is that the **information sets are learned**: weights learned
@@ -23,13 +24,18 @@ set, so each search climbs toward lighter codewords. Stalled climbs partially fo
 learned and restart, and many independent climbs run in parallel. Sisyphus is written in
 Python with [Numba](https://numba.pydata.org/)-compiled bit-packed GF(2) kernels.
 
-Sisyphus builds directly on two existing tools for computing the distance of quantum codes,
-and we gratefully acknowledge both: [**QDistRnd**](https://github.com/QEC-pages/QDistRnd),
-the GAP package that established randomized information-set search as a practical method
-for quantum codes, and [**dist-m4ri**](https://github.com/QEC-pages/dist-m4ri), its fast C
-successor for codes and circuit-level detector error models, whose benchmark set and exact
-detector-error-model reduction we use for all circuit-level comparisons. A recent survey and
-benchmark of distance-finding algorithms for quantum codes and circuits was a further guide.
+Sisyphus builds directly on three existing tools for computing the distance of quantum
+codes, and we gratefully acknowledge all of them:
+[**QDistRnd**](https://github.com/QEC-pages/QDistRnd), the GAP package that established
+randomized information-set search as a practical method for quantum codes;
+[**dist-m4ri**](https://github.com/QEC-pages/dist-m4ri), its fast C successor for codes and
+circuit-level detector error models, whose benchmark set and exact detector-error-model
+reduction we use for all circuit-level comparisons; and
+[**QDistEvol**](https://github.com/m-webster/codeDistancePYPI), which evolves a population of
+information sets instead of drawing them independently, part of the `codedistance` package
+that accompanies a recent survey and benchmark of distance-finding algorithms for quantum codes
+and circuits. The idea that information sets can be improved from one trial to the next,
+rather than sampled blindly, is common to QDistEvol and Sisyphus.
 
 > **If you use Sisyphus in published work, please cite Sisyphus together with the
 > QDistRnd paper and the distance-finding paper of Webster, Jacob and Higgott**
@@ -650,13 +656,13 @@ distance-finding paper of Webster, Jacob and Higgott:
 Information-set decoding and low-weight codeword search:
 
 1. <a id="ref-1"></a>E. Prange, "The use of information sets in decoding cyclic codes", *IRE
-   Transactions on Information Theory* 8(5), S5–S9 (1962). Information sets;
+   Transactions on Information Theory* 8(5), 5–9 (1962). Information sets;
    reading codewords off a systematic generator matrix.
 2. <a id="ref-2"></a>P. J. Lee and E. F. Brickell, "An observation on the security of McEliece's
    public-key cryptosystem", *EUROCRYPT 1988*, LNCS 330, 275–280 (1988). Sums of
    several rows.
 3. <a id="ref-3"></a>J. Stern, "A method for finding codewords of small weight", *Coding Theory and
-   Applications*, LNCS 388, 106–113 (1989). Collision search on a subset of
+   Applications* (Toulon, 1988), LNCS 388, 106–113, Springer (1989). Collision search on a subset of
    redundant columns.
 4. <a id="ref-4"></a>A. Canteaut and F. Chabaud, "A new algorithm for finding minimum-weight words
    in a linear code: application to McEliece's cryptosystem and to narrow-sense
@@ -668,11 +674,15 @@ Distance of quantum codes and circuits:
 5. <a id="ref-5"></a>L. P. Pryadko, V. A. Shabashov and V. K. Kozin, "QDistRnd: A GAP package for
    computing the distance of quantum error-correcting codes", *Journal of Open
    Source Software* 7(71), 4120 (2022).
-6. <a id="ref-6"></a>L. P. Pryadko and W. Zeng, dist-m4ri, https://github.com/QEC-pages/dist-m4ri.
-   Random-window information sets and connected-cluster search for codes and
-   detector error models; the circuit-level benchmark set used here.
+6. <a id="ref-6"></a>L. P. Pryadko and Weilei Zeng, dist-m4ri: distance of a classical or quantum CSS
+   code, https://github.com/QEC-pages/dist-m4ri (v0.14.7). Random-window information sets and
+   connected-cluster search for codes and detector error models; the circuit-level benchmark
+   set used here. The connected-cluster method: I. Dumer, A. A. Kovalev and L. P. Pryadko,
+   "Distance verification for classical and quantum LDPC codes", *IEEE Transactions on
+   Information Theory* 63(7), 4675–4686 (2017).
 7. <a id="ref-7"></a>M. Webster, A. Jacob and O. Higgott, "Distance-Finding Algorithms for Quantum
-   Codes and Circuits", arXiv:2603.22532 (2026).
+   Codes and Circuits", arXiv:2603.22532 (2026). QDistEvol and the `codedistance` package,
+   https://github.com/m-webster/codeDistancePYPI.
 8. <a id="ref-8"></a>C. Gidney, "Stim: a fast stabilizer circuit simulator", *Quantum* 5, 497
    (2021). Detector error models.
 
@@ -689,15 +699,16 @@ Search heuristics:
 
 11. <a id="ref-11"></a>H. H. Hoos and T. Stützle, *Stochastic Local Search: Foundations and
     Applications*, Morgan Kaufmann (2004). Stochastic hill climbing with restarts.
-12. <a id="ref-12"></a>H. R. Lourenço, O. C. Martin and T. Stützle, "Iterated local search",
-    *Handbook of Metaheuristics*, 320–353 (2003). Perturbation and restart from a
+12. <a id="ref-12"></a>H. R. Lourenço, O. C. Martin and T. Stützle, "Iterated local search", in
+    *Handbook of Metaheuristics* (F. Glover and G. Kochenberger, eds.), Springer, 320–353 (2003). Perturbation and restart from a
     local optimum.
 13. <a id="ref-13"></a>D. Whitley, S. Rana and R. B. Heckendorn, "The island model genetic
     algorithm: on separability, population size and convergence", *Journal of
     Computing and Information Technology* 7(1), 33–47 (1999). Independent
     subpopulations in parallel.
 14. <a id="ref-14"></a>D. E. Goldberg and K. Deb, "A comparative analysis of selection schemes used
-    in genetic algorithms", *Foundations of Genetic Algorithms*, 69–93 (1991).
+    in genetic algorithms", in *Foundations of Genetic Algorithms* (G. J. E. Rawlins, ed.),
+    Morgan Kaufmann, 69–93 (1991).
     Tournament selection.
 
 Codes used in the benchmarks:
