@@ -337,29 +337,36 @@ the same 13 problems:
   dimension 64, or the largest that fits).
 - Each run stops at the target weight, which is the exact distance where known and otherwise
   the lightest known weight. Each tool has three runs per problem.
-- A time range gives the fastest and slowest run that reached the target, with "(k of 3)" if
-  only k did. "best w" is the lightest weight found when no run reached the target. Times
-  exclude loading and compilation. All solutions were verified.
+- Times exclude loading and compilation. All solutions were verified.
 
 Circuits are memory experiments from the dist-m4ri benchmark set (SI1000 noise) or single
 noisy rounds of syndrome extraction; sizes are detectors × faults after exact reduction to one
-basis.
+basis. Bold marks the best result in each row (lowest median time, or lightest weight).
+
+**Time to reach the target** (fastest–slowest of 3 runs; "(k of 3)" if only k runs reached it;
+"not reached (w)" if no run did, with w the lightest weight found):
 
 | problem | target | limit | Sisyphus | dist-m4ri | QDistEvol | sqetch |
 |---|---|---|---|---|---|---|
-| gross [[144,12,12]] | 12 | 10 min | 0.03–0.04 s | < 0.01 s | < 0.01 s | 0.01 s |
-| [[756,16,34]] bivariate bicycle [[15](#ref-15)] | 34 | 10 min | 0.07–0.2 s | 0.1–0.5 s | 2.4–5.8 s | 80 s (1 of 3) |
-| [[1152,580,12]] affine-permutation | 12 | 10 min | 0.04–0.09 s | 0.01 s | 0.4–3.2 s | 0.09–0.2 s |
-| [[2304,1156,14]] affine-permutation | 14 | 10 min | 0.1–0.2 s | 0.04–0.1 s | 18–26 s (2 of 3) | 2.6–83 s |
-| [[2844,1426,18]] Cornucopia [[16](#ref-16)] | 18 | 10 min | **2–3 s** | 14–40 s | best 24 | best 22 |
-| [[4608,2308,20]] affine-permutation, X | 20 | 1 h | 108–359 s | 86–1,700 s | best 212 | best 22 |
-| [[4608,2308,20]] affine-permutation, Z | 20 | 1 h | 813–2,043 s | **125–664 s** | best 192 | best 128 |
-| gross circuit, 12 rounds (936 × 8,784) | 10 | 10 min | 0.4–0.5 s | 0.03–0.06 s | 89–357 s | best 11 |
-| Mitten [[270,54,10]] circuit (648 × 8,910) | 9 | 10 min | 0.2–0.3 s | 0.04–0.4 s | 487 s (1 of 3) | best 10 |
-| double gross [[288,12,18]] circuit, 18 rounds (2,736 × 26,208) | 16 | 30 min | **3–6 s** | best 18 | best 31 | best 23 |
-| [[360,12,24]] circuit, 24 rounds (4,500 × 43,560) | 21 | 30 min | **9–10 s** | best 22 | best 63 | best 39¹ |
-| [[756,16,34]] circuit, 34 rounds (13,230 × 129,276) | lightest | 1 h | **31** (329–409 s) | 45 | out of memory² | does not fit³ |
-| [[4608,2308,20]] circuit, one round (2,304 × 29,952) | 20 | 1 h | **22** | 490 | 574 | 174 |
+| gross [[144,12,12]] | 12 | 10 min | 0.03–0.04 s | **< 0.01 s** | **< 0.01 s** | 0.01 s |
+| [[756,16,34]] bivariate bicycle [[15](#ref-15)] | 34 | 10 min | **0.07–0.2 s** | 0.1–0.5 s | 2.4–5.8 s | 80 s (1 of 3) |
+| [[1152,580,12]] affine-permutation [[17](#ref-17)] | 12 | 10 min | 0.04–0.09 s | **0.01 s** | 0.4–3.2 s | 0.09–0.2 s |
+| [[2304,1156,14]] affine-permutation | 14 | 10 min | 0.1–0.2 s | **0.04–0.1 s** | 18–26 s (2 of 3) | 2.6–83 s |
+| [[2844,1426,18]] Cornucopia [[16](#ref-16)] | 18 | 10 min | **2–3 s** | 14–40 s | not reached (24) | not reached (22) |
+| [[4608,2308,20]] affine-permutation, X | 20 | 1 h | **108–359 s** | 86–1,700 s | not reached (212) | not reached (22) |
+| [[4608,2308,20]] affine-permutation, Z | 20 | 1 h | 813–2,043 s | **125–664 s** | not reached (192) | not reached (128) |
+| gross circuit, 12 rounds (936 × 8,784) | 10 | 10 min | 0.4–0.5 s | **0.03–0.06 s** | 89–357 s | not reached (11) |
+| Mitten [[270,54,10]] circuit (648 × 8,910) | 9 | 10 min | 0.2–0.3 s | **0.04–0.4 s** | 487 s (1 of 3) | not reached (10) |
+
+**Lightest fault set found within the time limit** on the larger circuits (lower is better;
+the target is the lightest weight known):
+
+| circuit | target | limit | Sisyphus | dist-m4ri | QDistEvol | sqetch |
+|---|---|---|---|---|---|---|
+| double gross [[288,12,18]], 18 rounds (2,736 × 26,208) | 16 | 30 min | **16** (3–6 s) | 18 | 31 | 23 |
+| [[360,12,24]], 24 rounds (4,500 × 43,560) | 21 | 30 min | **21** (9–10 s) | 22 | 63 | 39¹ |
+| [[756,16,34]], 34 rounds (13,230 × 129,276) | – | 1 h | **31** (329–409 s) | 45 | out of memory² | does not fit³ |
+| [[4608,2308,20]], one round (2,304 × 29,952) | 20 | 1 h | **22** | 490 | 574 | 174 |
 
 ¹ sqetch's own codeword recovery did not return a valid word of this weight.
 ² Sixteen parallel runs on this problem need more than the 180 GB of the allocation.
@@ -546,6 +553,9 @@ Codes used in the benchmarks:
 16. <a id="ref-16"></a>Z. Lu, W. Li and D.-L. Deng, "Quantum error correction at ultra-low
     overhead", arXiv:2608.02773 (2026). Cornucopia codes; check matrices at
     https://github.com/ZhideLu/Cornucopia_code.
+17. <a id="ref-17"></a>C. Zhao, C. Duckering, A. Gu, N. Maskara and H. Zhou, "Towards ultra-high-rate
+    quantum error correction with reconfigurable atom arrays", arXiv:2604.16209 (2026).
+    Affine-permutation codes.
 
 ## Acknowledgements
 
