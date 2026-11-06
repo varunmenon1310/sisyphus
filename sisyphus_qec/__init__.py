@@ -1,5 +1,5 @@
-"""Sisyphus: fast randomized search for the minimum distance of CSS quantum codes and of
-circuit-level detector error models. See README.md.
+"""Sisyphus: a fast circuit-level distance estimator for quantum codes (circuit-level detector
+error models and CSS codes). See README.md.
 
 Package layout:
     gf2            bit-packed GF(2) linear algebra (M4RI row reduction, kernels)

@@ -1,10 +1,20 @@
-# Sisyphus — fast distance search for quantum codes and circuits
+# Sisyphus — a fast circuit-level distance estimator
 
-Sisyphus finds low-weight logical operators of CSS quantum codes and low-weight
-undetectable fault sets of circuit-level detector error models (DEMs). It reports
-the lightest ones it finds, so it gives **upper bounds on the code distance and
-on the circuit-level distance**, together with an explicit, verified witness for
-every bound.
+Sisyphus is a **fast circuit-level distance estimator** for quantum error-correcting
+codes. Given a noisy syndrome-extraction circuit as a detector error model (DEM), it
+finds low-weight sets of faults that flip a logical observable without triggering any
+detector; given a CSS code, it finds low-weight logical operators. It reports the
+lightest ones it finds, so it gives **upper bounds on the circuit-level distance and on
+the code distance**, together with an explicit, verified witness for every bound.
+
+<p align="center">
+  <img src="docs/sisyphus_climb.gif" width="680"
+       alt="Sisyphus pushes a boulder up a terraced hill; each ledge is a lighter logical operator">
+</p>
+<p align="center"><sub>Each ledge is a lighter logical operator of the [[360,12,24]] bivariate
+bicycle code (real codewords, shown below the hill on the 360 qubits); blue shading marks the
+learned column weights. When a climb stalls, part of what was learned is forgotten and the climb
+restarts. Script: <a href="docs/animation/make_animation.py"><code>docs/animation/make_animation.py</code></a>.</sub></p>
 
 Sisyphus is a **hill-climbing variant of information-set decoding (ISD)**
 [[1](#ref-1)–[4](#ref-4), [11](#ref-11)]. It combines several algorithmic
@@ -34,19 +44,15 @@ algorithms for quantum codes and circuits [[7](#ref-7)] was a further guide.
 
 Highlights (details in [Benchmarks](#benchmarks-and-comparisons)):
 
-- On large circuit-level instances Sisyphus improves several **best published bounds**
-  on circuit-level distance. For example, it finds a weight-33 undetectable fault
-  set in the 34-round syndrome-extraction circuit of the [[756,16,≤34]]
-  bivariate bicycle code, which is below the code's own distance bound of 34. It
-  also gives 21 for the [[360,12,≤24]] circuit (published: ≤ 23), 16 for the
-  double-gross [[288,12,18]] circuit (published: ≤ 18) and 10 for the gross
-  [[144,12,12]] circuit with uniform noise (published: ≤ 11).
-- On medium-size circuit instances it reaches the published distance **3–51×
-  faster** than [dist-m4ri](https://github.com/QEC-pages/dist-m4ri) at the median
-  (same job, 16 cores each), and ties on the remaining one.
-- On codes it matches or beats dist-m4ri: sub-second on everything up to
-  [[2304,1156]], and 2–5× faster on one side of the hardest instance tested
-  ([[4608,2308,≤20]]).
+- **Large circuits.** Sisyphus improves several best published circuit-level bounds,
+  for example a weight-33 fault set in the 34-round memory circuit of the
+  [[756,16,34]] bivariate bicycle code (below the code distance). On one-round circuits
+  of a [[4608,2308,20]] code it reaches weight 20, where dist-m4ri [[6](#ref-6)] stays above 470.
+- **Medium circuits** (26k–44k faults): it reaches the published distance 3–51× faster than
+  dist-m4ri at the median, with a much smaller spread between runs.
+- **Codes.** It reaches the exact distance of codes with up to 4,608 qubits, for example the
+  weight-20 logicals of [[4608,2308,20]] and the weight-18 logicals of [[2844,1426,18]], and is
+  more than 1,000× faster than the evolutionary search QDistEvol [[7](#ref-7)] on a single core.
 
 ---
 
@@ -469,74 +475,87 @@ are listed for completeness.
 
 ## Benchmarks and comparisons
 
-Runs stop at the known or published distance (`cutoff`) unless stated otherwise. The two tools run on the same machine type (Intel Xeon
-Platinum 8268), **16 threads for dist-m4ri vs 16 worker processes for Sisyphus**; the
-small and medium circuit instances were run in the same job.
-Times are min / median / max over 3 seeds. Both tools are randomized, so the spread
-comes from the random seed. Every witness of both tools is verified (circuits: on
-the full DEM).
+**How to read the tables.** Each run stops at the stated weight (the known distance or
+the best published bound) unless noted. Times are wall-clock times to the first
+verified solution of that weight. A range `a–b` is the minimum and maximum over the
+independent runs (random seeds) given in the column header or note; for CSS codes the
+range covers both the X and the Z side. Every witness of every tool was verified
+(circuits: on the full detector error model).
 
-dist-m4ri ([QEC-pages/dist-m4ri](https://github.com/QEC-pages/dist-m4ri),
-v0.14.7) is the current reference tool for this problem. Its random-window
-information-set algorithm (`method=1`) is the upper-bound search compared here,
-with default parameters unless noted.
+Tools compared: [dist-m4ri](https://github.com/QEC-pages/dist-m4ri) [[6](#ref-6)] v0.14.7,
+random-window information sets (`method=1`, default parameters unless noted), and
+QDistEvol [[7](#ref-7)] from the public `codedistance` package (v0.0.8, default parameters).
+Sisyphus and dist-m4ri: 16 worker processes vs 16 threads on the same machine type.
 
-### Codes
+### Circuit-level distance
 
-| instance | distance | dist-m4ri | Sisyphus |
+The circuits are the Stim circuits of the dist-m4ri benchmark set (bivariate bicycle,
+gross, double-gross, "Mitten" and toric-layout memory experiments with SI1000 or uniform
+noise). Each detector error model was reduced exactly to one basis; sizes are detectors ×
+faults after reduction. Small and medium circuits: both tools in the same job on the same
+node (Intel Xeon Platinum 8268), 3 runs per circuit and basis.
+
+| circuits | reduced size | stop at | dist-m4ri | Sisyphus |
+|---|---|---|---|---|
+| 19 small circuits: bb72, bb90, bb108, torus200, Mitten 90–330 | up to 792 × 10,890 | 4–9 | 0.00–0.17 s | 0.08–0.48 s |
+| gross [[144,12,12]], SI1000 and uniform | 936 × 8,784 | 10–11 | 0.02–0.10 s | 0.21–0.30 s |
+| double gross [[288,12,18]], 3 circuits | 2,736 × 26,208 | 18 | 2.2–81 s | **2.6–3.3 s** |
+| [[360,12,24]] SI1000, X and Z | 4,500 × 43,560 | 23 | 41–482 s | **3.9–7.7 s** |
+
+On the small circuits both tools take well under a second, and Sisyphus's time is mostly
+fixed setup (starting worker processes, elimination). On the medium circuits Sisyphus is
+3–51× faster at the median and its spread between runs is much smaller. On every
+circuit of the last two rows Sisyphus also finds fault sets lighter than the published
+bound (see [new bounds](#bounds-tighter-than-the-best-published)).
+
+Large circuits: lightest fault set found. The one-round circuits were generated for this
+comparison (a single noisy round of syndrome extraction, greedy edge-coloured CNOT
+schedule, uniform circuit-level noise); with about 13 faults per detector they are much
+harder for both tools than multi-round memory experiments.
+
+| circuit | reduced size | budget | dist-m4ri | Sisyphus |
+|---|---|---|---|---|
+| [[756,16,34]] SI1000, 34 rounds, X | 13,230 × 129,276 | 30 min | 49 | **33** (found at 199 s) |
+| [[4608,2308,20]] affine-permutation code, 1 round, X and Z | 2,304 × 29,952 | 8 h × 6–8 runs | 474 | **20** (1.8–7.7 h, 4 of 8 runs) |
+| [[2232,1120,16]] two-block group-algebra code, 1 round, Z | 1,116 × 14,508 | 8 h × 3–4 runs | 13 | 13 (8–51 min, 4 of 4 runs) |
+
+### Code distance
+
+16 workers / 16 threads, 3 runs per side. Bivariate bicycle and affine-permutation (APM)
+codes on Xeon 8268; the Cornucopia codes [[16](#ref-16)] (check matrices from the authors'
+repository) on Xeon 8480CL.
+
+| code | distance | dist-m4ri | Sisyphus |
 |---|---|---|---|
-| gross [[144,12,12]] | 12 | < 0.01 s | 0.06 s |
-| double gross [[288,12,18]] X / Z | 18 | < 0.01 / < 0.01 s | 0.09 / 0.09 s |
-| [[270,54,10]] ("Mitten" family of the dist-m4ri benchmark) X / Z | 10 | < 0.01 s | 0.09 s |
-| [[360,12,≤24]] bivariate bicycle X / Z | 24 | < 0.01 s | 0.09 s |
-| [[756,16,≤34]] bivariate bicycle X / Z | 34 | 0.07–0.33 / 0.15–0.68 s | 0.11–0.12 / 0.10–0.12 s |
-| [[1152,580,≤12]] affine-permutation (APM) | 12 | 0.00 / 0.00 / 0.01 s | 0.09 / 0.09 / 0.10 s |
-| [[2304,1156,≤14]] APM | 14 | 0.11 / 0.26 / 0.45 s | 0.21 / 0.24 / 0.30 s |
-| [[4608,2308,≤20]] APM, Z side | 20 | 783, 1157 s (2 seeds) | **139, 591 s** |
-| [[4608,2308,≤20]] APM, X side | 20 | 1 of 3 seeds in 1800 s (102 s) | 1 of 3 seeds in 1800 s (1008 s) |
+| gross [[144,12,12]], double gross [[288,12,18]], [[270,54,10]], [[360,12,24]] | 10–24 | < 0.01 s | 0.06–0.09 s |
+| [[756,16,34]] bivariate bicycle | 34 | 0.07–0.68 s | 0.10–0.12 s |
+| [[1152,580,12]] APM | 12 | ≤ 0.01 s | 0.09–0.10 s |
+| [[2304,1156,14]] APM | 14 | 0.11–0.45 s | 0.21–0.30 s |
+| [[4608,2308,20]] APM, Z side (2 runs) | 20 | 783–1157 s | **139–591 s** |
+| [[4608,2308,20]] APM, X side (3 runs of 30 min) | 20 | 102 s (1 of 3 runs) | 1008 s (1 of 3 runs) |
+| [[1044,526,12]] Cornucopia | 12 | < 0.01 s | 0.09–0.10 s |
+| [[1764,886,14]] Cornucopia | 14 | 0.02–0.19 s | 0.12–0.19 s |
+| [[2304,1156,16]] Cornucopia | 16 | 0.02–0.03 s | 0.27–0.43 s |
+| [[2844,1426,18]] Cornucopia | 18 | 2.8–40 s | **1.0–3.4 s** |
 
-### Circuit-level instances
+### Single core: comparison with QDistEvol
 
-The circuits are the Stim circuits of the dist-m4ri benchmark set: bivariate
-bicycle, gross and double-gross memory experiments with SI1000 or uniform noise,
-the "Mitten" codes with two syndrome-extraction schedules each, and a toric-layout code.
-Each detector error model was reduced exactly to one basis, and the reduced
-sizes match those reported by dist-m4ri.
+One core per run, Xeon 8480 (Sapphire Rapids). QDistEvol runs its default budget of 10,000 eliminations per
+run; its column is the time per successful run (run time divided by the fraction of
+16 runs that reached the distance), the measure used in [[7](#ref-7)]. Sisyphus: time to the
+first weight-d solution over 4 runs. Measured to the first hit instead of the full budget, the two successful
+QDistEvol runs on the Mitten circuit took 34 and 53 minutes.
 
-Small and medium circuits: **both tools in the same job on the same node**, 3 seeds
-each, stopping at the published value (2026-11-05). dist-m4ri's time is its own
-search clock, which excludes reading and reducing the DEM file. Sisyphus's time is the
-whole call, including its setup (elimination, starting worker processes).
-
-| instance | reduced size | stop at | dist-m4ri | Sisyphus | median speedup |
-|---|---|---|---|---|---|
-| bb72 SI1000 X / Z, uniform X | 252 × 2,232 | 6 | 0.00 s | 0.08 s | – |
-| bb90 SI1000 X / Z | 495 × 4,590 | 8 | 0.01 s | 0.15 s | – |
-| bb108 SI1000 X / Z | 594 × 5,508 | 8 | 0.01 s | 0.16 s | – |
-| torus200 X / Z | 300 × 4,800 | 8 | 0.01–0.09 s | 0.18–0.27 s | – |
-| Mitten 90–330, both schedules (10 circuits) | up to 792 × 10,890 | 4–9 | 0.00–0.17 s | 0.09–0.48 s | – |
-| gross SI1000 X / Z | 936 × 8,784 | 10 | 0.03–0.10 s | 0.21–0.23 s | – |
-| gross uniform X | 936 × 8,784 | 11 | 0.02–0.04 s | 0.27–0.30 s (finds **10**) | – |
-| double gross SI1000 X | 2,736 × 26,208 | 18 | 2.2 / 2.4 / 7.4 s | 2.6 / 2.7 / 2.8 s | 0.9× (tie) |
-| double gross uniform X | 2,736 × 26,208 | 18 | 7.2 / 8.9 / 40 s | **2.6 / 2.8 / 3.2 s** | **3.2×** |
-| double gross SI1000 Z | 2,736 × 26,208 | 18 | 59 / 71 / 81 s | **2.6 / 3.3 / 3.3 s** | **22×** |
-| [[360,12,24]] SI1000 X | 4,500 × 43,560 | 23 | 41 / 192 / 482 s | **3.9 / 3.9 / 7.7 s** (finds **22**) | **49×** |
-| [[360,12,24]] SI1000 Z | 4,500 × 43,560 | 23 | 139 / 195 / 291 s | **3.9 / 3.9 / 3.9 s** | **51×** |
-
-Large circuits (16 threads vs 16 workers):
-
-| instance | reduced size | dist-m4ri | Sisyphus |
+| instance | distance | QDistEvol | Sisyphus |
 |---|---|---|---|
-| [[756,16,34]] SI1000 X, 34 rounds | 13,230 × 129,276 | 54 at 72 s; 50 at 238–553 s; best 49 in 1800 s | **47–49 at ~80 s; 39 at ~82 s; 33 at 199 s** |
-| [[4608,2308,≤20]] APM, one round, Z / X | 2,304 × 29,952 | 484–505 after 1 h (default and `pairs=12`) | **22 within 120 s** (Z: 1 of 2 seeds, X: 2 of 2) |
-| [[2232,1120,16]] two-block group-algebra code, one round, Z: time to weight ≤ 14 (4 seeds, 15 min each) | 1,116 × 14,508 | 0 of 4 (best 15, 15, 16, 16; `pairs=12`) | **4 of 4: 33 / 67 / 497 s** |
-| same circuit, lightest found in hour-long runs, Z / X | 1,116 × 14,508 | **13** / **15** | 14 / 16 |
-
-The two one-round circuits were generated for this comparison: a single noisy
-round of syndrome extraction with a greedy edge-coloured CNOT schedule and
-uniform circuit-level noise. They are much harder for both tools than multi-round
-memory experiments, because their models have about 13 faults per detector, so a
-low-weight fault set has only a small chance of avoiding a random information set.
+| gross [[144,12,12]] | 12 | 2.9 s (16 of 16) | 0.002 s |
+| [[360,12,24]] bivariate bicycle | 24 | 8.3 s (16 of 16) | 0.004–0.006 s |
+| [[756,16,34]] bivariate bicycle | 34 | 128 s (4 of 16) | 0.015–0.27 s |
+| [[1152,580,12]] APM | 12 | 153 s (16 of 16) | 0.012–0.065 s |
+| [[2304,1156,14]] APM | 14 | 7.3 h (1 of 16) | 0.7–1.5 s |
+| bb72 circuit, SI1000 (252 × 2,232) | 6 | 123 s (16 of 16) | 0.02 s |
+| gross circuit, SI1000 (936 × 8,784) | 10 | 2.1 h (7 of 16) | 0.8–1.1 s |
+| Mitten [[270,54,10]] circuit (648 × 8,910) | 9 | 8.1 h (2 of 16) | 1.6–4.9 s |
 
 ### Bounds tighter than the best published
 
@@ -549,42 +568,28 @@ original circuits with Stim:
 python benchmarks/verify_witnesses.py /path/to/dist-m4ri/benchmark
 ```
 
-| circuit (dist-m4ri benchmark) | published | **Sisyphus** | notes |
-|---|---|---|---|
-| `bb_756_16_34_si1000_r34`, X basis | not computed; the code's distance is ≤ 34 and the lightest reported circuit fault set has weight 55 | **33** | below the code distance bound: the syndrome-extraction schedule loses distance to hook errors. dist-m4ri's best in 30 min: 49 |
-| `bb_360_12_24_si1000_r24`, X basis | [12, 23] | **21** | found in 120 s (2 of 2 seeds) |
-| `bb_360_12_24_si1000_r24`, Z basis | not computed | **21** | found in 120 s (2 of 2 seeds) |
-| `double_gross_288_12_18_si1000_r18`, X basis | [12, 18] | **16** | found in 120 s (2 of 2 seeds) |
-| `double_gross_288_12_18_si1000_r18`, Z basis | not computed | **16** | found in 120 s (2 of 2 seeds) |
-| `double_gross_288_12_18_uniform_r18`, X basis | not computed | **16** | found in 120 s (2 of 2 seeds) |
-| `gross_144_12_12_uniform_r12`, X basis | [7, 11] | **10** | found in under 1 s |
+| circuit (dist-m4ri benchmark) | published | **Sisyphus** |
+|---|---|---|
+| `bb_756_16_34_si1000_r34`, X basis | not computed (code distance 34) | **33** |
+| `bb_360_12_24_si1000_r24`, X and Z basis | ≤ 23 (X) | **21** |
+| `double_gross_288_12_18_si1000_r18`, X and Z basis | ≤ 18 (X) | **16** |
+| `double_gross_288_12_18_uniform_r18`, X basis | not computed | **16** |
+| `gross_144_12_12_uniform_r12`, X basis | ≤ 11 | **10** |
 
-At the code level, no published bound was improved. Sisyphus reaches the published
-weight 20 on [[4608,2308,≤20]] and 34 on [[756,16,≤34]].
+The 33 for the [[756,16,34]] circuit lies below the code distance: its
+syndrome-extraction schedule loses distance to hook errors.
 
 ### Summary
 
-- **Small instances** (codes up to a few thousand qubits, circuits up to about
-  10⁴ faults): both tools reach the known distance in well under a second.
-  dist-m4ri is faster in absolute terms (0.00–0.17 s vs 0.08–0.48 s); Sisyphus's
-  time there is mostly fixed setup cost (starting worker processes, elimination).
-- **Medium circuits** (2.7k–4.5k detectors, 26k–44k faults): Sisyphus reaches the
-  published distance **3–51× faster at the median** on four of the five
-  instances and ties on the fifth, with a much smaller run-to-run spread
-  (bb360 X: 3.9–7.7 s vs 41–482 s).
-- **Large codes**: on [[4608,2308,≤20]] Sisyphus is 2–5× faster on the Z side,
-  where the minimum-weight logicals are concentrated on few blocks and the
-  learned column weights pay off; the X side is a tie (about 25 core-hours per
-  weight-20 hit for both).
-- **Large circuits**: on the 34-round [[756,16,34]] circuit Sisyphus finds lower
-  weights sooner (33 vs 49). On the one-round circuits Sisyphus reaches low
-  weights much faster ([[4608,2308]]: 22 vs 484; [[2232,1120]]: weight 14 in
-  4 of 4 runs within 15 minutes vs 0 of 4), but in hour-long runs dist-m4ri has
-  found lighter fault sets on [[2232,1120]] (13 vs 14 in the Z basis, 15 vs 16
-  in the X basis).
-- **Lower bounds**: dist-m4ri also certifies lower bounds with its
-  connected-cluster algorithm (`method=2`), and with them exact distances on small
-  instances. Sisyphus gives upper bounds only.
+- **Circuits** are where Sisyphus helps most. The learned column weights and the detector
+  time windows find the light fault sets of medium and large memory experiments 3–51×
+  faster than dist-m4ri, and they find lighter fault sets than any published bound on the
+  largest bivariate bicycle circuits. On small circuits both tools are instantaneous.
+- **Codes**: on codes up to a few thousand qubits both tools reach the distance in under a
+  second, with dist-m4ri's lower start-up cost ahead on the smallest. On the largest codes
+  ([[2844,1426,18]], [[4608,2308,20]] Z side) Sisyphus is faster.
+- **Upper bounds only.** dist-m4ri also proves lower bounds with its connected-cluster
+  algorithm (`method=2`); Sisyphus does not.
 
 ---
 
@@ -634,7 +639,7 @@ distance-finding paper of Webster, Jacob and Higgott:
 
 ```bibtex
 @software{sisyphus,
-  title   = {{Sisyphus}: fast randomized distance search for quantum codes and circuits},
+  title   = {{Sisyphus}: a fast circuit-level distance estimator for quantum codes},
   author  = {Menon, Varun},
   year    = {2026},
   url     = {https://github.com/varunmenon1310/sisyphus}
@@ -720,6 +725,9 @@ Codes used in the benchmarks:
 15. <a id="ref-15"></a>S. Bravyi, A. W. Cross, J. M. Gambetta, D. Maslov, P. Rall and T. J. Yoder,
     "High-threshold and low-overhead fault-tolerant quantum memory", *Nature*
     627, 778–782 (2024). Bivariate bicycle codes.
+16. <a id="ref-16"></a>Z. Lu, W. Li and D.-L. Deng, "Quantum error correction at ultra-low
+    overhead", arXiv:2608.02773 (2026). Cornucopia codes; check matrices at
+    https://github.com/ZhideLu/Cornucopia_code.
 
 ## Disclosure
 
