@@ -271,13 +271,19 @@ Matrices are passed as dense 0/1 numpy arrays and bit-packed internally.
 
 ## Options
 
-The defaults were chosen by equal-wall-clock comparisons on codes and circuit-level models of
-all sizes in the benchmarks, and we recommend keeping them. To tune them for a family of
-instances, use an automated search scored by time to target over several seeds rather than
-manual changes.
+> **The defaults work well across codes of very different sizes and across
+> circuit-level instances, and we do not recommend changing them.** They were
+> chosen by equal-wall-clock comparisons on small, medium and large codes and on
+> circuit-level models, and every default is the best setting found in those
+> comparisons. The search parameters interact in ways that are hard to tune by
+> hand. If you need to tune them for a specific family of instances, use an
+> automated hyperparameter search (for example an agentic optimization loop that
+> scores settings by time-to-target over several seeds), not one-off manual
+> changes.
 
-Run options are the ones normally set. Search parameters can also be passed as keyword
-arguments to `css_distance` and `side_distance`.
+The options you normally set are the **run options**. The **search parameters**
+can be passed as keyword arguments to `css_distance` and `side_distance`; they
+are listed for completeness.
 
 ### Run options
 
