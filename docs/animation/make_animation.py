@@ -191,7 +191,7 @@ ax.add_patch(summit)
 
 # schematic space-time panel: detectors in grey, boundaries as thin lines, the fault set in orange
 axg.set_xlim(-1.6, NCOL + 0.6)
-axg.set_ylim(-0.7, NROW - 0.3)
+axg.set_ylim(-1.75, NROW - 0.3)
 axg.set_aspect("equal")
 axg.axis("off")
 gx, gy = np.meshgrid(np.arange(NCOL), np.arange(NROW))
@@ -201,6 +201,9 @@ for bx in (-1, NCOL):
 axg.annotate("", xy=(-1.45, NROW - 0.6), xytext=(-1.45, -0.4),
              arrowprops=dict(arrowstyle="->", color=MUTED, lw=0.8))
 axg.text(-1.6, (NROW - 1) / 2, "time", fontsize=7, color=MUTED, ha="right", va="center", rotation=90)
+axg.annotate("", xy=(NCOL - 0.6, -1.0), xytext=(-0.4, -1.0),
+             arrowprops=dict(arrowstyle="->", color=MUTED, lw=0.8))
+axg.text((NCOL - 1) / 2, -1.25, "space", fontsize=7, color=MUTED, ha="center", va="top")
 FAULT_LINES = LineCollection([], colors=ACCENT, linewidths=2.4, capstyle="round", zorder=3)
 axg.add_collection(FAULT_LINES)
 FAULT_DOTS = axg.scatter([], [], s=22, c=ACCENT, lw=0, zorder=4)
