@@ -9,7 +9,7 @@ checked independently.
 
 <p align="center">
   <img src="docs/sisyphus_climb.gif" width="680"
-       alt="A figure pushes a boulder up a terraced hill; each ledge is a lighter logical operator">
+       alt="A figure pushes a boulder across a rugged landscape whose height is the lightness of the fault sets in view; it stalls on local optima, is kicked into new basins, and flags each lighter fault set until it reaches the distance">
 </p>
 
 Sisyphus is a hill-climbing variant of information-set decoding (ISD). It builds on Prange's
