@@ -34,15 +34,21 @@ work, please cite it together with QDistRnd and the distance-finding paper of We
 and Higgott (see [Citing](#citing)).
 
 Results, from the [benchmarks](#benchmarks) against dist-m4ri, QDistEvol and sQetch on the
-same problems and hardware:
+same problems and hardware. Sisyphus's advantage grows with the size of the problem:
 
-- On the larger memory-experiment circuits, Sisyphus is the only one of the four tools that
-  reaches the target weight within the time limit. It improves several published
-  circuit-level bounds, including a weight-31 fault set in the 34-round memory circuit of the
-  [[756,16,34]] bivariate bicycle code.
-- On a one-round circuit of a [[4608,2308,20]] code it reaches weight 22 within an hour and
-  20 in longer runs; the other tools stay above 170.
-- It reaches the distance of every code tested, up to [[4608,2308,20]].
+- **Circuit-level models with tens of thousands of faults or more.** Sisyphus finds lighter
+  fault sets than the other tools, not only sooner. It reaches the lightest known weight of
+  the double-gross and [[360,12,24]] memory circuits in 3–10 s, while the other tools stop
+  above that weight after 30 minutes. It finds a weight-31 fault set in the 34-round circuit
+  of the [[756,16,34]] bivariate bicycle code (dist-m4ri: 45 after an hour) and weight 22 in a
+  one-round circuit of a [[4608,2308,20]] code (the other tools: above 170). Several of these
+  improve on published circuit-level bounds.
+- **Codes.** Sisyphus reaches the distance of every code tested, up to [[4608,2308,20]], and
+  is competitive with the fastest tool throughout. It is the fastest tool on the
+  [[756,16,34]] and [[2844,1426,18]] codes (2–3 s against 14–40 s for dist-m4ri on the
+  latter). On the [[4608,2308,20]] code Sisyphus and dist-m4ri are each faster on one side.
+- **Small problems.** Most codes up to a few thousand qubits and circuits up to about 10⁴
+  faults take well under a second. dist-m4ri is often first, by a fraction of a second.
 
 ## Contents
 
@@ -396,15 +402,20 @@ every run, matching dist-m4ri's best (13 in every run; 14 in 2 of 4).
 
 Summary:
 
-- On small problems (codes up to a few thousand qubits, circuits up to about 10⁴ faults),
-  Sisyphus and dist-m4ri reach the target in under a second, dist-m4ri usually first because of
-  its lower start-up cost. QDistEvol and sQetch are as fast on the smallest codes but take
-  minutes or stop above the target on the small circuits.
-- On larger circuits Sisyphus is ahead: it is the only tool that reaches the target on the
-  double-gross and [[360,12,24]] circuits, and it finds the lightest fault sets on the two
-  largest circuits.
-- On large codes the results are mixed. Sisyphus is fastest on [[2844,1426,18]], it overlaps
-  with dist-m4ri on the X side of [[4608,2308,20]], and dist-m4ri is faster on the Z side.
+- **Larger circuits: lighter fault sets.** On the four circuits with 26,000 to 130,000
+  faults, Sisyphus finds a lighter fault set than any other tool within the time limit, in
+  every run. It reaches its lightest weight in 3–10 s on the double-gross and [[360,12,24]]
+  circuits, where dist-m4ri stays one or two above it after 30 minutes. On the [[756,16,34]]
+  circuit it reaches 31 in 6–7 minutes, where dist-m4ri stays between 45 and 50 after an hour.
+  On the one-round [[4608,2308,20]] circuit, Sisyphus reaches 22 in two of three runs and the
+  other tools stay above 170.
+- **Codes: competitive throughout.** Sisyphus is faster on the
+  [[756,16,34]] and [[2844,1426,18]] codes (2–3 s against 14–40 s on the latter) and on the
+  X side of [[4608,2308,20]] (median 227 s against 1,641 s). dist-m4ri is faster on the Z side
+  of [[4608,2308,20]] (median 276 s against 1,406 s) and on the small codes, where both tools
+  take less than 0.2 s.
+- **Small circuits.** On the two circuits with fewer than 10⁴ faults, both tools take under a
+  second, and dist-m4ri is usually first because its start-up cost is lower.
 - QDistEvol and sQetch reach the distance of codes up to [[2304,1156,14]], not in every run,
   and not of the larger codes or circuits. sQetch searches a fixed sketch of one basis and
   levels off above the distance (22 on [[2844,1426,18]], 128 on the Z side of
