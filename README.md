@@ -42,10 +42,11 @@ same problems and hardware. Sisyphus's advantage grows with the size of the prob
   in the 34-round circuit of the [[756,16,34]] bivariate bicycle code, and reaches weight 22
   in a one-round circuit of a [[4608,2308,20]] code within an hour. Several of these improve
   on previously reported circuit-level bounds.
-- **Codes.** Sisyphus reaches the distance of every code tested: in under a second on most
-  codes up to a few thousand qubits, in seconds on a [[2844,1426,18]] code, and in minutes on
-  a [[4608,2308,20]] code.
-- **Small circuits.** Circuits with up to about 10⁴ faults take under a second.
+- **Small and medium instances.** On most codes up to a few thousand qubits and on circuits
+  with up to about 10⁴ faults, Sisyphus is competitive with the other tools and finishes in
+  under a second. It reaches the distance of every code tested, up to [[4608,2308,20]].
+
+See the [benchmarks](#benchmarks) for detailed comparisons.
 
 ## Contents
 
