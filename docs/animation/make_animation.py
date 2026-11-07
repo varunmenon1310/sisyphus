@@ -346,25 +346,25 @@ def limb(name, p, q, w_p, w_q, w_m=None, at=0.45):
 
 
 # lower left: schematic space-time panel (best fault set so far)
-axg = fig.add_axes([0.02, 0.08, 0.46, 0.30], facecolor=PAPER)
+axg = fig.add_axes([0.01, 0.075, 0.50, 0.335], facecolor=PAPER)
 axg.set_xlim(-1.6, NCOL + 0.6)
-axg.set_ylim(-1.75, NROW - 0.3)
+axg.set_ylim(-1.55, NROW - 0.35)
 axg.set_aspect("equal")
 axg.axis("off")
 gx, gy = np.meshgrid(np.arange(NCOL), np.arange(NROW))
-axg.scatter(gx.ravel(), gy.ravel(), s=8, c=MUTED, lw=0, zorder=1)
+axg.scatter(gx.ravel(), gy.ravel(), s=26, c="#77766f", lw=0, zorder=1)
 for bxx in (-1, NCOL):
-    axg.plot([bxx, bxx], [-0.4, NROW - 0.6], color=MUTED, lw=1.0, zorder=1)
+    axg.plot([bxx, bxx], [-0.4, NROW - 0.6], color=INK, lw=1.6, zorder=1)
 axg.annotate("", xy=(-1.45, NROW - 0.6), xytext=(-1.45, -0.4),
-             arrowprops=dict(arrowstyle="->", color=MUTED, lw=0.8))
-axg.text(-1.6, (NROW - 1) / 2, "time", fontsize=7, color=MUTED, ha="right", va="center", rotation=90)
+             arrowprops=dict(arrowstyle="->", color=INK, lw=1.1))
+axg.text(-1.6, (NROW - 1) / 2, "time", fontsize=9, color=INK, ha="right", va="center", rotation=90)
 axg.annotate("", xy=(NCOL - 0.6, -1.0), xytext=(-0.4, -1.0),
-             arrowprops=dict(arrowstyle="->", color=MUTED, lw=0.8))
-axg.text((NCOL - 1) / 2, -1.25, "space", fontsize=7, color=MUTED, ha="center", va="top")
-FAULT_LINES = LineCollection([], colors=ACCENT, linewidths=2.2, capstyle="round", zorder=3)
+             arrowprops=dict(arrowstyle="->", color=INK, lw=1.1))
+axg.text((NCOL - 1) / 2, -1.2, "space", fontsize=9, color=INK, ha="center", va="top")
+FAULT_LINES = LineCollection([], colors=ACCENT, linewidths=3.6, capstyle="round", zorder=3)
 axg.add_collection(FAULT_LINES)
-FAULT_DOTS = axg.scatter([], [], s=18, c=ACCENT, lw=0, zorder=4)
-panel_txt = fig.text(0.25, 0.04, "", ha="center", va="center", color=INK, fontsize=9)
+FAULT_DOTS = axg.scatter([], [], s=50, c=ACCENT, lw=0, zorder=4)
+panel_txt = fig.text(0.26, 0.04, "", ha="center", va="center", color=INK, fontsize=10)
 
 # lower right: current weight (grey) and best weight (black) over time
 axt = fig.add_axes([0.60, 0.12, 0.36, 0.25], facecolor=PAPER)
@@ -434,7 +434,8 @@ def draw(k):
     s_b = s_h - 0.05                                   # back foot: the straight pushing leg
     for _ in range(80):
         fb, _a = at_s(s_b)
-        if np.hypot(*(fb - hip)) >= (0.975 + 0.02 * np.sin(phase)) * LEG:
+        if np.hypot(*(fb - hip)) >= (0.975 + 0.02 * np.sin(phase)) * LEG \
+                or fb[1] > hip[1] - 0.8 * LEG:         # ground rising behind: bend the knee
             break
         s_b -= 0.01
     f1 = fb
