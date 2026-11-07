@@ -37,11 +37,11 @@ Results, from the [benchmarks](#benchmarks) against dist-m4ri, QDistEvol and sQe
 same problems and hardware. Sisyphus's advantage grows with the size of the problem:
 
 - **Circuit-level models with tens of thousands of faults or more.** Sisyphus finds lighter
-  fault sets than the other tools, not only sooner. It reaches the lightest known weight of
-  the double-gross and [[360,12,24]] memory circuits in seconds, finds a weight-31 fault set
-  in the 34-round circuit of the [[756,16,34]] bivariate bicycle code, and reaches weight 22
-  in a one-round circuit of a [[4608,2308,20]] code within an hour. Several of these improve
-  on previously reported circuit-level bounds.
+  fault sets than the other tools, not only sooner. It finds fault sets of weight 16 and 21 in
+  the double-gross and [[360,12,24]] memory circuits within seconds, a weight-31 fault set in
+  the 34-round circuit of the [[756,16,34]] bivariate bicycle code, and weight 22 in a
+  one-round circuit of a [[4608,2308,20]] code within an hour. The bounds for the
+  [[360,12,24]] and [[756,16,34]] circuits improve on previously reported values.
 - **Small and medium instances.** On most codes up to a few thousand qubits and on circuits
   with up to about 10⁴ faults, Sisyphus is competitive with the other tools and finishes in
   under a second. It reaches the distance of every code tested, up to [[4608,2308,20]].
@@ -425,8 +425,9 @@ Summary:
 Found by Sisyphus on circuits of the dist-m4ri benchmark set [[6](#ref-6)]: SI1000-noise memory
 circuits distributed with the Tesseract decoder [[19](#ref-19)] and uniform-noise memory
 circuits distributed with Relay-BP [[20](#ref-20)]. Previous values are from the table of
-circuit-level distances in the dist-m4ri benchmark documentation [[6](#ref-6)] and from
-Table 1 of the bivariate bicycle paper [[15](#ref-15)]. Each witness in
+circuit-level distances in the dist-m4ri benchmark documentation [[6](#ref-6)] and from the
+published results data of the benchmark of distance-finding methods [[7](#ref-7)], which used
+the same circuits. Each witness in
 [`benchmarks/witnesses/`](benchmarks/witnesses/) lists its faults (the detectors and
 observables each one flips) and can be checked against the original circuits with Stim:
 
@@ -436,17 +437,8 @@ python benchmarks/verify_witnesses.py /path/to/dist-m4ri/benchmark
 
 | circuit (dist-m4ri benchmark) | previously reported | **Sisyphus** |
 |---|---|---|
-| `bb_756_16_34_si1000_r34`, X basis | not computed; code distance ≤ 34 [[15](#ref-15)] | **31** |
-| `bb_360_12_24_si1000_r24`, X and Z basis | [12, 23] (X) [[6](#ref-6)] | **21** |
-| `double_gross_288_12_18_si1000_r18`, X and Z basis | [12, 18] (X) [[6](#ref-6)]; ≤ 18¹ [[15](#ref-15)] | **16** |
-| `double_gross_288_12_18_uniform_r18`, X basis | ≤ 18¹ [[15](#ref-15)] | **16** |
-
-¹ Circuit-level distance of the [[288,12,18]] code reported in [[15](#ref-15)] for that paper's
-syndrome-extraction circuit under circuit-level depolarizing noise.
-
-The same paper reports a circuit-level distance of at most 10 for the gross code; Sisyphus
-finds weight 10 on the uniform-noise gross circuit of the benchmark set, which matches that
-value.
+| `bb_756_16_34_si1000_r34`, X basis | none for the X basis; ≤ 56 in the Z basis [[7](#ref-7)] | **31** |
+| `bb_360_12_24_si1000_r24`, X and Z basis | [12, 23] (X) [[6](#ref-6)]; ≤ 88 (Z) [[7](#ref-7)] | **21** |
 
 ## Limitations
 
@@ -480,7 +472,7 @@ sisyphus/
 ├── tests/                pytest suite (known distances, brute force on random codes,
 │                         a circuit)
 └── benchmarks/
-    ├── witnesses/        fault sets behind the new circuit-level bounds
+    ├── witnesses/        fault sets behind the circuit-level bounds
     └── verify_witnesses.py
 ```
 
