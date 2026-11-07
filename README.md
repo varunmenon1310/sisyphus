@@ -38,17 +38,14 @@ same problems and hardware. Sisyphus's advantage grows with the size of the prob
 
 - **Circuit-level models with tens of thousands of faults or more.** Sisyphus finds lighter
   fault sets than the other tools, not only sooner. It reaches the lightest known weight of
-  the double-gross and [[360,12,24]] memory circuits in 3–10 s, while the other tools stop
-  above that weight after 30 minutes. It finds a weight-31 fault set in the 34-round circuit
-  of the [[756,16,34]] bivariate bicycle code (dist-m4ri: 45 after an hour) and weight 22 in a
-  one-round circuit of a [[4608,2308,20]] code (the other tools: above 170). Several of these
-  improve on published circuit-level bounds.
-- **Codes.** Sisyphus reaches the distance of every code tested, up to [[4608,2308,20]], and
-  is competitive with the fastest tool throughout. It is the fastest tool on the
-  [[756,16,34]] and [[2844,1426,18]] codes (2–3 s against 14–40 s for dist-m4ri on the
-  latter). On the [[4608,2308,20]] code Sisyphus and dist-m4ri are each faster on one side.
-- **Small problems.** Most codes up to a few thousand qubits and circuits up to about 10⁴
-  faults take well under a second. dist-m4ri is often first, by a fraction of a second.
+  the double-gross and [[360,12,24]] memory circuits in seconds, finds a weight-31 fault set
+  in the 34-round circuit of the [[756,16,34]] bivariate bicycle code, and reaches weight 22
+  in a one-round circuit of a [[4608,2308,20]] code within an hour. Several of these improve
+  on previously reported circuit-level bounds.
+- **Codes.** Sisyphus reaches the distance of every code tested: in under a second on most
+  codes up to a few thousand qubits, in seconds on a [[2844,1426,18]] code, and in minutes on
+  a [[4608,2308,20]] code.
+- **Small circuits.** Circuits with up to about 10⁴ faults take under a second.
 
 ## Contents
 
@@ -362,8 +359,9 @@ QDistEvol in more detail. All four tools were run on the same 13 problems:
   the lightest known weight. Each tool has three runs per problem.
 - Times exclude loading and compilation. All solutions were verified.
 
-Circuits are memory experiments from the dist-m4ri benchmark set (SI1000 noise) or single
-noisy rounds of syndrome extraction; sizes are detectors × faults after exact reduction to one
+Circuits are memory experiments from the dist-m4ri benchmark set [[6](#ref-6)] (SI1000-noise
+circuits distributed with the Tesseract decoder [[19](#ref-19)]) or single noisy rounds of
+syndrome extraction; sizes are detectors × faults after exact reduction to one
 basis. Bold marks the best result in each row (lowest median time, or lightest weight).
 
 **Time to reach the target** (fastest–slowest of 3 runs; "(k of 3)" if only k runs reached it;
@@ -421,23 +419,33 @@ Summary:
   levels off above the distance (22 on [[2844,1426,18]], 128 on the Z side of
   [[4608,2308,20]]).
 
-### Bounds tighter than the best published
+### Bounds tighter than previously reported
 
-Found by Sisyphus. Each witness in [`benchmarks/witnesses/`](benchmarks/witnesses/) lists its
-faults (the detectors and observables each one flips) and can be checked against the original
-circuits with Stim:
+Found by Sisyphus on circuits of the dist-m4ri benchmark set [[6](#ref-6)]: SI1000-noise memory
+circuits distributed with the Tesseract decoder [[19](#ref-19)] and uniform-noise memory
+circuits distributed with Relay-BP [[20](#ref-20)]. Previous values are from the table of
+circuit-level distances in the dist-m4ri benchmark documentation [[6](#ref-6)] and from
+Table 1 of the bivariate bicycle paper [[15](#ref-15)]. Each witness in
+[`benchmarks/witnesses/`](benchmarks/witnesses/) lists its faults (the detectors and
+observables each one flips) and can be checked against the original circuits with Stim:
 
 ```bash
 python benchmarks/verify_witnesses.py /path/to/dist-m4ri/benchmark
 ```
 
-| circuit (dist-m4ri benchmark) | published | **Sisyphus** |
+| circuit (dist-m4ri benchmark) | previously reported | **Sisyphus** |
 |---|---|---|
-| `bb_756_16_34_si1000_r34`, X basis | not computed (code distance 34) | **31** |
-| `bb_360_12_24_si1000_r24`, X and Z basis | ≤ 23 (X) | **21** |
-| `double_gross_288_12_18_si1000_r18`, X and Z basis | ≤ 18 (X) | **16** |
-| `double_gross_288_12_18_uniform_r18`, X basis | not computed | **16** |
-| `gross_144_12_12_uniform_r12`, X basis | ≤ 11 | **10** |
+| `bb_756_16_34_si1000_r34`, X basis | not computed; code distance ≤ 34 [[15](#ref-15)] | **31** |
+| `bb_360_12_24_si1000_r24`, X and Z basis | [12, 23] (X) [[6](#ref-6)] | **21** |
+| `double_gross_288_12_18_si1000_r18`, X and Z basis | [12, 18] (X) [[6](#ref-6)]; ≤ 18¹ [[15](#ref-15)] | **16** |
+| `double_gross_288_12_18_uniform_r18`, X basis | ≤ 18¹ [[15](#ref-15)] | **16** |
+
+¹ Circuit-level distance of the [[288,12,18]] code reported in [[15](#ref-15)] for that paper's
+syndrome-extraction circuit under circuit-level depolarizing noise.
+
+The same paper reports a circuit-level distance of at most 10 for the gross code; Sisyphus
+finds weight 10 on the uniform-noise gross circuit of the benchmark set, which matches that
+value.
 
 ## Limitations
 
@@ -536,7 +544,8 @@ Distance of quantum codes and circuits:
 6. <a id="ref-6"></a>L. P. Pryadko and Weilei Zeng, dist-m4ri: distance of a classical or quantum CSS
    code, https://github.com/QEC-pages/dist-m4ri (v0.14.7). Random-window information sets and
    connected-cluster search for codes and detector error models; the circuit-level benchmark
-   set used here. The connected-cluster method: I. Dumer, A. A. Kovalev and L. P. Pryadko,
+   set used here and its table of circuit-level distances (section 2.4 of
+   https://github.com/QEC-pages/dist-m4ri/blob/master/benchmark/BENCHMARK.md). The connected-cluster method: I. Dumer, A. A. Kovalev and L. P. Pryadko,
    "Distance verification for classical and quantum LDPC codes", *IEEE Transactions on
    Information Theory* 63(7), 4675–4686 (2017).
 7. <a id="ref-7"></a>M. Webster, A. Jacob and O. Higgott, "Distance-Finding Algorithms for Quantum
@@ -584,6 +593,16 @@ Codes used in the benchmarks:
 18. <a id="ref-18"></a>A. Bhardwaj, M. Ma, N. Meister, R. King, D. Bluvstein, J. Preskill, M. Cain,
     Q. Xu and H.-Y. Huang, "High-rate qLDPC processors", arXiv:2607.28795 (2026). Mitten codes
     and the sQetch distance estimator.
+
+Circuits used in the benchmarks:
+
+19. <a id="ref-19"></a>L. Aghababaie Beni, O. Higgott and N. Shutty, "Tesseract: A search-based
+    decoder for quantum error correction", arXiv:2503.10988 (2025). SI1000-noise memory circuits
+    of bivariate bicycle codes, https://github.com/quantumlib/tesseract-decoder.
+20. <a id="ref-20"></a>T. Müller, T. Alexander, M. E. Beverland, M. Bühler, B. R. Johnson,
+    T. Maurer and D. Vandeth, "Improved belief propagation is sufficient for real-time decoding
+    of quantum memory", arXiv:2506.01779 (2025). Uniform-noise memory circuits of bivariate
+    bicycle codes, https://github.com/trmue/relay.
 
 ## Acknowledgements
 
