@@ -7,6 +7,7 @@ flip no detector and connect the two boundaries, i.e. flip a logical observable.
 shows a lighter such fault set; the last one, weight 10, is the shortest chain across the grid.
 
     python docs/animation/make_animation.py [out.gif]      (numpy, matplotlib, pillow)
+    STILL=5,40 python docs/animation/make_animation.py     (PNG stills of those frames)
 """
 import sys
 from pathlib import Path
@@ -100,7 +101,9 @@ def at_s(s):
 
 
 S_LEDGE = [float(np.interp(x, XS, ARC)) for x in X_LEDGE]
-R_BALL = 0.17
+R_BALL = 0.38
+FIG = 0.74                      # scale of the figure (lengths below are at FIG = 1)
+L_ARM, L_TORSO, L_THIGH, L_CALF = 0.25, 0.27, 0.19, 0.19
 
 # ----------------------------------------------------------------- timeline
 frames = []                       # (s, ledge shown, event)
@@ -169,8 +172,23 @@ SEGS = {name: ax.add_patch(Polygon(np.zeros((6, 2)), closed=True, fc=INK, ec=INK
                                    joinstyle="round", zorder=4))
         for name in ("thigh1", "calf1", "thigh2", "calf2", "upper", "fore", "neck")}
 JOINTS = [ax.add_patch(Circle((0, 0), 0.01, fc=INK, ec="none", zorder=4)) for _ in range(7)]
-head = Circle((0, 0), 0.074, fc=INK, ec="none", zorder=4)
+head = Circle((0, 0), FIG * 0.074, fc=INK, ec="none", zorder=4)
 ax.add_patch(head)
+
+
+def ik_knee(hip, foot, a, b, fwd):
+    """Knee of a two-segment leg (thigh a, calf b) from hip to foot, bent towards `fwd`."""
+    d = foot - hip
+    D = max(np.hypot(*d), 1e-9)
+    e = d / D
+    if D >= a + b:
+        return hip + a * e
+    x = (a * a - b * b + D * D) / (2 * D)
+    h = np.sqrt(max(a * a - x * x, 0.0))
+    nv = np.array([-e[1], e[0]])
+    if np.dot(nv, fwd) < 0:
+        nv = -nv
+    return hip + x * e + h * nv
 
 
 def limb(name, p, q, w_p, w_q, w_m=None, at=0.45):
@@ -222,35 +240,63 @@ def draw(k):
     ball.center = c
     roll = -s / R_BALL
     spot.center = c + 0.6 * R_BALL * np.array([np.cos(roll), np.sin(roll)])
-    # the pusher: hands on the upper back of the boulder, body leaning into it
-    hand = c + R_BALL * (-0.72 * u + 0.70 * nrm)
-    lean = np.deg2rad(50) + 0.5 * ang            # torso angle above the horizontal
+    # the pusher: an upright lunge, arms straight out in front pointing at the boulder's
+    # centre (the direction of the push); the figure stands where its arms just reach
+    lean = np.deg2rad(68) + 0.30 * ang            # torso angle above the horizontal
     tdir = np.array([np.cos(lean), np.sin(lean)])
-    sh = hand + np.array([-0.12, 0.22])
-    hip = sh - 0.27 * tdir
-    hd = sh + 0.11 * tdir + np.array([0.0, 0.05])
-    s_hip = float(np.interp(hip[0], XS, ARC))
+    leg = FIG * (L_THIGH + L_CALF)
+    reach = 0.95 * FIG * L_ARM
+
+    def body(s_h):
+        g, a_g = at_s(s_h)                         # hips higher on a slope (uphill front foot)
+        hip_ = g + np.array([0.0, (0.80 + 0.22 * np.sin(max(a_g, 0.0))) * leg])
+        return hip_, hip_ + FIG * L_TORSO * tdir
+
+    lo = s - 2.0                                   # walk forward until the arms reach
+    step = 0.02
+    while step > 1e-4:
+        while lo + step < s and np.hypot(*(body(lo + step)[1] - c)) - R_BALL > reach:
+            lo += step
+        step *= 0.5
+    hip, sh = body(lo)
+    to_c = c - sh
+    dist = np.hypot(*to_c)
+    a_dir = to_c / dist
+    hand = sh + (dist - R_BALL) * a_dir            # on the boulder's surface
+    hd = sh + FIG * 0.12 * tdir + FIG * 0.03 * a_dir    # head forward, between the arms
+    r_head = FIG * 0.074
+    gap = np.hypot(*(hd - c)) - R_BALL - r_head
+    if gap < 0.004:                                # keep the head off the boulder
+        hd = hd - (0.004 - gap) * (hd - c) / np.hypot(*(hd - c))
+    s_hip = lo
     phase = 9.0 * s
-    f1, _ = at_s(s_hip - 0.19 + 0.07 * np.sin(phase))
-    f2, _ = at_s(s_hip + 0.06 - 0.07 * np.sin(phase))
-    knee = 0.5 * (hip + f2) + 0.08 * u + 0.03 * nrm
+    s_b = s_hip - 0.05                             # back foot: the straight pushing leg
+    for _ in range(80):
+        fb, _a = at_s(s_b)
+        if np.hypot(*(fb - hip)) >= (0.975 + 0.02 * np.sin(phase)) * leg:
+            break
+        s_b -= 0.01
+    f1 = fb
+    _g, a_h = at_s(s_hip)
+    f2, _ = at_s(s_hip + FIG * (0.13 - 0.05 * np.sin(phase)) * np.cos(a_h) ** 2)   # front foot
+    knee1 = ik_knee(hip, f1, FIG * L_THIGH, FIG * L_CALF, -u + nrm)
+    knee = ik_knee(hip, f2, FIG * L_THIGH, FIG * L_CALF, u + 0.3 * nrm)
     perp = np.array([-tdir[1], tdir[0]])          # normal to the torso (towards the back)
     chest = hip + 0.62 * (sh - hip)
-    torso.set_xy([sh + 0.066 * perp, chest + 0.090 * perp, hip + 0.050 * perp,
-                  hip - 0.042 * perp, chest - 0.058 * perp, sh - 0.060 * perp])
-    knee1 = 0.5 * (hip + f1) + 0.015 * nrm         # back leg nearly straight: it pushes
-    elbow = 0.5 * (sh + hand) - 0.05 * nrm + 0.01 * u    # elbows bent under the load
-    neck = sh + 0.05 * tdir + 0.02 * np.array([0.0, 1.0])
-    limb("thigh1", hip, knee1, 0.050, 0.032, 0.058, 0.35)
-    limb("calf1", knee1, f1, 0.030, 0.017, 0.040, 0.30)
-    limb("thigh2", hip, knee, 0.050, 0.032, 0.058, 0.35)
-    limb("calf2", knee, f2, 0.030, 0.017, 0.040, 0.30)
-    limb("upper", sh, elbow, 0.040, 0.026, 0.046, 0.45)     # biceps
-    limb("fore", elbow, hand, 0.026, 0.018, 0.032, 0.30)
-    limb("neck", sh, neck, 0.034, 0.030)
-    for jc, (pt, r) in zip(JOINTS, [(hip, 0.050), (knee1, 0.031), (knee, 0.032), (sh, 0.060),
-                                    (elbow, 0.027), (f1, 0.018), (f2, 0.018)]):
-        jc.center, jc.radius = pt, r
+    torso.set_xy([sh + FIG * 0.064 * perp, chest + FIG * 0.088 * perp, hip + FIG * 0.050 * perp,
+                  hip - FIG * 0.042 * perp, chest - FIG * 0.056 * perp, sh - FIG * 0.058 * perp])
+    elbow = 0.5 * (sh + hand) - FIG * 0.018 * np.array([-a_dir[1], a_dir[0]])  # arms almost straight
+    neck = sh + FIG * 0.05 * tdir
+    limb("thigh1", hip, knee1, FIG * 0.050, FIG * 0.032, FIG * 0.058, 0.35)
+    limb("calf1", knee1, f1, FIG * 0.030, FIG * 0.017, FIG * 0.040, 0.30)
+    limb("thigh2", hip, knee, FIG * 0.050, FIG * 0.032, FIG * 0.058, 0.35)
+    limb("calf2", knee, f2, FIG * 0.030, FIG * 0.017, FIG * 0.040, 0.30)
+    limb("upper", sh, elbow, FIG * 0.040, FIG * 0.028, FIG * 0.046, 0.45)
+    limb("fore", elbow, hand, FIG * 0.028, FIG * 0.020, FIG * 0.033, 0.35)
+    limb("neck", sh, neck, FIG * 0.034, FIG * 0.030)
+    for jc, (pt, r) in zip(JOINTS, [(hip, 0.050), (knee1, 0.031), (knee, 0.032), (sh, 0.058),
+                                    (elbow, 0.028), (f1, 0.018), (f2, 0.018)]):
+        jc.center, jc.radius = pt, FIG * r
     head.center = hd
     done = lv == K - 1 and abs(s - S_LEDGE[-1]) < 1e-9
     readout.set_text(f"w = {W[lv]}" + (" = d" if done else ""))
@@ -263,6 +309,12 @@ def draw(k):
     return []
 
 
+import os
+if os.environ.get("STILL"):                       # STILL=k1,k2,...: PNG stills instead of the GIF
+    for k in [int(v) for v in os.environ["STILL"].split(",")]:
+        draw(k)
+        fig.savefig(OUT.replace(".gif", "") + f"_f{k}.png", facecolor=PAPER)
+    sys.exit(0)
 anim = FuncAnimation(fig, draw, frames=len(frames), interval=40, blit=False)
 anim.save(OUT, writer=PillowWriter(fps=25), savefig_kwargs={"facecolor": PAPER})
 print("wrote", OUT, len(frames), "frames", flush=True)
