@@ -12,7 +12,7 @@ Illustration of the search, not a trace of a real run:
     reaches the target (here the distance).
 The lower-left panel is a caricature of a detector error model: a space-time grid of detectors
 and, in orange, the lightest set of faults found so far that flips no detector and connects the
-two boundaries. The lower-right panel plots the current weight (grey) and the best weight (black).
+two boundaries. The lower-right panel plots the current weight (grey) and the best weight (orange).
 
     python docs/animation/make_animation.py [out.gif]      (numpy, matplotlib, pillow)
     STILL=5,40 python docs/animation/make_animation.py     (PNG stills of those frames)
@@ -30,7 +30,7 @@ from matplotlib.collections import LineCollection
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = sys.argv[1] if len(sys.argv) > 1 else str(ROOT / "docs" / "sisyphus_climb.gif")
-FPS = 25
+FPS = 20                           # playback: 1 timeline frame per 50 ms
 
 # ----------------------------------------------------------------- schematic fault sets
 NCOL, NROW = 9, 5                  # detectors: positions x rounds (shortest crossing: NCOL + 1 = 10)
@@ -260,15 +260,6 @@ for _ in range(55):
     emit(S_PT[i10], zoom=1.0)
 NF = len(frames)
 
-STATUS = {
-    "climb": "Climbing: learned column priorities choose the swaps",
-    "record": "New lightest fault set: weight {b}",
-    "stuck": "Local optimum: every nearby swap gives heavier fault sets",
-    "kick": "Kick: forget part of the priorities and roll into a new basin",
-    "worse": "Local optimum, heavier than the best so far ({b})",
-    "done": "Weight {b} reached: the distance",
-}
-
 # camera: follows the boulder (smoothed), then zooms out to the whole explored landscape
 bx = np.array([ball_center(f[0])[0][0] for f in frames])
 by = np.array([ball_center(f[0])[0][1] for f in frames])
@@ -287,7 +278,7 @@ explored = np.maximum.accumulate(bx + R_BALL + 0.2)
 
 # ----------------------------------------------------------------- figure
 fig = plt.figure(figsize=(8.0, 5.0), dpi=int(os.environ.get("DPI", 100)), facecolor=PAPER)
-AX_RECT = [0.03, 0.40, 0.94, 0.58]
+AX_RECT = [0.03, 0.42, 0.94, 0.56]
 ax = fig.add_axes(AX_RECT, facecolor=PAPER)
 ASPECT = (AX_RECT[3] * 5.0) / (AX_RECT[2] * 8.0)    # view height / view width
 ax.set_aspect("equal")
@@ -325,7 +316,6 @@ SEGS = {name: ax.add_patch(Polygon(np.zeros((6, 2)), closed=True, fc=INK, ec=INK
 JOINTS = [ax.add_patch(Circle((0, 0), 0.01, fc=INK, ec="none", zorder=4)) for _ in range(7)]
 head = Circle((0, 0), FIG * 0.074, fc=INK, ec="none", zorder=4)
 ax.add_patch(head)
-status_txt = fig.text(0.5, 0.375, "", ha="center", va="center", color=INK, fontsize=10)
 
 
 def ik_knee(hip, foot, a, b, fwd):
@@ -356,7 +346,7 @@ def limb(name, p, q, w_p, w_q, w_m=None, at=0.45):
 
 
 # lower left: schematic space-time panel (best fault set so far)
-axg = fig.add_axes([0.04, 0.07, 0.52, 0.26], facecolor=PAPER)
+axg = fig.add_axes([0.02, 0.08, 0.46, 0.30], facecolor=PAPER)
 axg.set_xlim(-1.6, NCOL + 0.6)
 axg.set_ylim(-1.75, NROW - 0.3)
 axg.set_aspect("equal")
@@ -374,26 +364,26 @@ axg.text((NCOL - 1) / 2, -1.25, "space", fontsize=7, color=MUTED, ha="center", v
 FAULT_LINES = LineCollection([], colors=ACCENT, linewidths=2.2, capstyle="round", zorder=3)
 axg.add_collection(FAULT_LINES)
 FAULT_DOTS = axg.scatter([], [], s=18, c=ACCENT, lw=0, zorder=4)
-panel_txt = fig.text(0.30, 0.035, "", ha="center", va="center", color=INK, fontsize=9)
+panel_txt = fig.text(0.25, 0.04, "", ha="center", va="center", color=INK, fontsize=9)
 
 # lower right: current weight (grey) and best weight (black) over time
-axt = fig.add_axes([0.63, 0.10, 0.33, 0.20], facecolor=PAPER)
+axt = fig.add_axes([0.60, 0.12, 0.36, 0.25], facecolor=PAPER)
 axt.set_xlim(0, NF)
 axt.set_ylim(31, 8.5)                              # lighter is up, as in the landscape
 for sp in ("top", "right"):
     axt.spines[sp].set_visible(False)
 for sp in ("left", "bottom"):
-    axt.spines[sp].set_color(MUTED)
-    axt.spines[sp].set_linewidth(0.8)
+    axt.spines[sp].set_color(INK)
+    axt.spines[sp].set_linewidth(1.0)
 axt.set_xticks([])
 axt.set_yticks([10, 20, 30])
-axt.tick_params(axis="y", colors=MUTED, labelsize=7, length=2)
-axt.set_xlabel("time", fontsize=7, color=MUTED, labelpad=2)
-axt.set_ylabel("weight", fontsize=7, color=MUTED, labelpad=2)
-cur_line, = axt.plot([], [], color=FOG, lw=1.0)
-best_line, = axt.plot([], [], color=INK, lw=1.4, drawstyle="steps-post")
+axt.tick_params(axis="y", colors=INK, labelsize=9, length=3)
+axt.set_xlabel("time", fontsize=9, color=INK, labelpad=3)
+axt.set_ylabel("weight", fontsize=9, color=INK, labelpad=3)
+cur_line, = axt.plot([], [], color=MUTED, lw=1.8)
+best_line, = axt.plot([], [], color=ACCENT, lw=2.6, drawstyle="steps-post")
 axt.legend([cur_line, best_line], ["current", "best"], loc="lower right", bbox_to_anchor=(1.0, 1.0),
-           ncol=2, frameon=False, fontsize=7, handlelength=1.4, borderaxespad=0.1, labelcolor=MUTED)
+           ncol=2, frameon=False, fontsize=9, handlelength=1.6, borderaxespad=0.1)
 FR = np.arange(NF)
 BEST = np.array([f[2] if f[2] is not None else np.nan for f in frames], float)
 
@@ -485,7 +475,6 @@ def draw(k):
     readout.set_text("best w = " + (f"{bst}" if bst is not None else "-") + (" = d" if done else ""))
     readout.set_color(ACCENT if done else INK)
     readout2.set_text(f"current w = {int(round(w_cur[k]))}")
-    status_txt.set_text(STATUS[st].format(b=bst))
 
     # lower panels
     if bst is not None:
@@ -512,7 +501,7 @@ if os.environ.get("STILL"):                       # STILL=k1,k2,...: PNG stills 
 # anti-aliasing shades), no dithering, and every frame after the first stores only the pixels
 # that changed (the rest transparent): a few times smaller than plain per-frame palettes
 from PIL import Image
-STEP = float(os.environ.get("STEP", 1.25))        # timeline frames per GIF frame (20 fps)
+STEP = float(os.environ.get("STEP", 1.0))         # timeline frames per GIF frame
 imgs = []
 for k in np.unique(np.minimum(np.round(np.arange(0, NF, STEP)), NF - 1).astype(int)):
     draw(k)
