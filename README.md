@@ -1,4 +1,4 @@
-# Sisyphus: a fast circuit-level distance estimator
+# Sisyphus: a fast circuit-level distance estimator for quantum codes
 
 [![Unitary Foundation](https://img.shields.io/badge/Supported%20By-UNITARY%20FOUNDATION-brightgreen.svg?style=for-the-badge)](https://unitary.foundation)
 
