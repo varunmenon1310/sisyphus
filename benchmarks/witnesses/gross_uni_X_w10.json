@@ -1,0 +1,127 @@
+{
+ "instance": "gross_uni_X",
+ "circuit": "stim_bb/gross_144_12_12_uniform_r12_X.stim",
+ "source": "dist-m4ri benchmark/ (github.com/QEC-pages/dist-m4ri)",
+ "published_circuit_distance": "[7, 11]",
+ "weight": 10,
+ "found_by": "Sisyphus",
+ "faults": [
+  {
+   "detectors": [
+    1018,
+    1024,
+    1034,
+    1040,
+    1188
+   ],
+   "observables": [
+    3,
+    8
+   ]
+  },
+  {
+   "detectors": [
+    1018,
+    1024,
+    1068,
+    1074,
+    1172
+   ],
+   "observables": [
+    0,
+    1,
+    6,
+    8,
+    9,
+    11
+   ]
+  },
+  {
+   "detectors": [
+    1028,
+    1034,
+    1043
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    1028,
+    1156,
+    1173
+   ],
+   "observables": [
+    2,
+    3,
+    6,
+    7,
+    8,
+    10
+   ]
+  },
+  {
+   "detectors": [
+    1040,
+    1055,
+    1190
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    1043,
+    1049,
+    1052
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    1049,
+    1055,
+    1058
+   ],
+   "observables": [
+    10,
+    11
+   ]
+  },
+  {
+   "detectors": [
+    1052,
+    1058,
+    1068,
+    1074,
+    1156
+   ],
+   "observables": [
+    4
+   ]
+  },
+  {
+   "detectors": [
+    1172,
+    1188,
+    1189
+   ],
+   "observables": [
+    5,
+    9
+   ]
+  },
+  {
+   "detectors": [
+    1173,
+    1189,
+    1190
+   ],
+   "observables": [
+    0,
+    7,
+    8,
+    9,
+    11
+   ]
+  }
+ ]
+}

@@ -1,0 +1,238 @@
+{
+ "instance": "bb360_si_Z",
+ "circuit": "stim_bb/bb_360_12_24_si1000_r24_Z.stim",
+ "source": "dist-m4ri benchmark/ (github.com/QEC-pages/dist-m4ri)",
+ "published_circuit_distance": "not computed (X basis: [12, 23])",
+ "weight": 21,
+ "found_by": "Sisyphus",
+ "faults": [
+  {
+   "detectors": [
+    184,
+    205,
+    358
+   ],
+   "observables": [
+    0,
+    4,
+    5,
+    6
+   ]
+  },
+  {
+   "detectors": [
+    184,
+    209,
+    215,
+    236,
+    331,
+    337
+   ],
+   "observables": [
+    6,
+    8,
+    9,
+    11
+   ]
+  },
+  {
+   "detectors": [
+    188,
+    194,
+    221
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    188,
+    315,
+    316
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    193,
+    194,
+    246
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    193,
+    320,
+    321
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    198,
+    199,
+    257
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    198,
+    325,
+    326
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    199,
+    326,
+    327
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    204,
+    205,
+    263
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    204,
+    209,
+    262
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    215,
+    221,
+    242,
+    267,
+    273,
+    294
+   ],
+   "observables": [
+    0,
+    2,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    11
+   ]
+  },
+  {
+   "detectors": [
+    236,
+    242,
+    269
+   ],
+   "observables": [
+    3,
+    4,
+    5,
+    9,
+    11
+   ]
+  },
+  {
+   "detectors": [
+    246,
+    252,
+    279
+   ],
+   "observables": [
+    4,
+    5
+   ]
+  },
+  {
+   "detectors": [
+    252,
+    257,
+    310
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    262,
+    263,
+    315
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    267,
+    268,
+    320
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    268,
+    269,
+    321
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    273,
+    279,
+    300,
+    325,
+    331,
+    358
+   ],
+   "observables": [
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "detectors": [
+    294,
+    300,
+    327
+   ],
+   "observables": [
+    0,
+    2,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    11
+   ]
+  },
+  {
+   "detectors": [
+    310,
+    316,
+    337
+   ],
+   "observables": [
+    0,
+    1,
+    6,
+    7,
+    9,
+    11
+   ]
+  }
+ ]
+}

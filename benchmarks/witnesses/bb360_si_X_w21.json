@@ -1,0 +1,230 @@
+{
+ "instance": "bb360_si_X",
+ "circuit": "stim_bb/bb_360_12_24_si1000_r24_X.stim",
+ "source": "dist-m4ri benchmark/ (github.com/QEC-pages/dist-m4ri)",
+ "published_circuit_distance": "[12, 23]",
+ "weight": 21,
+ "found_by": "Sisyphus",
+ "faults": [
+  {
+   "detectors": [
+    7921,
+    7948,
+    7954
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    7932,
+    7933,
+    8060
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    7932,
+    7937,
+    8059
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    7937,
+    7958,
+    7964
+   ],
+   "observables": [
+    1,
+    4,
+    7,
+    8,
+    9,
+    10,
+    11
+   ]
+  },
+  {
+   "detectors": [
+    7938,
+    7943,
+    8065
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    7938,
+    7996,
+    7997
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    7943,
+    7995,
+    7996
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    7948,
+    7949,
+    8070
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    7949,
+    8001,
+    8002
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    7954,
+    8006,
+    8007
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    7985,
+    8006,
+    8012
+   ],
+   "observables": [
+    1,
+    2,
+    3,
+    6,
+    7
+   ]
+  },
+  {
+   "detectors": [
+    7995,
+    8016,
+    8022
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    8001,
+    8053,
+    8054
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    8002,
+    8054,
+    8055
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    8007,
+    8059,
+    8060
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    8012,
+    8064,
+    8065
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    8043,
+    8064,
+    8070
+   ],
+   "observables": [
+    1,
+    4,
+    7,
+    10,
+    11
+   ]
+  },
+  {
+   "detectors": [
+    8053,
+    8080,
+    8086
+   ],
+   "observables": [
+    1,
+    2,
+    3,
+    5,
+    6,
+    7
+   ]
+  },
+  {
+   "detectors": [
+    7921,
+    7927,
+    8022,
+    8049,
+    8055,
+    8080
+   ],
+   "observables": [
+    8,
+    9,
+    10,
+    11
+   ]
+  },
+  {
+   "detectors": [
+    7927,
+    7933,
+    7958,
+    7985,
+    7991,
+    8086
+   ],
+   "observables": [
+    1,
+    2,
+    3,
+    4,
+    6
+   ]
+  },
+  {
+   "detectors": [
+    7964,
+    7991,
+    7997,
+    8016,
+    8043,
+    8049
+   ],
+   "observables": [
+    3,
+    5,
+    6,
+    7
+   ]
+  }
+ ]
+}

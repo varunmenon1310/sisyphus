@@ -1,0 +1,201 @@
+{
+ "instance": "dgross_si_X",
+ "circuit": "stim_bb/double_gross_288_12_18_si1000_r18_X.stim",
+ "source": "dist-m4ri benchmark/ (github.com/QEC-pages/dist-m4ri)",
+ "published_circuit_distance": "[12, 18]",
+ "weight": 16,
+ "found_by": "Sisyphus",
+ "faults": [
+  {
+   "detectors": [
+    4920,
+    4961,
+    4966
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    4921,
+    4928,
+    5031
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    4924,
+    4929,
+    5039
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    4928,
+    4957,
+    4962
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    4961,
+    4995,
+    5002
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    4965,
+    4994,
+    4999
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    4994,
+    5028,
+    5035
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    4998,
+    5032,
+    5039
+   ],
+   "observables": [
+    2,
+    4,
+    6
+   ]
+  },
+  {
+   "detectors": [
+    4896,
+    4908,
+    4929,
+    5011,
+    5023,
+    5032
+   ],
+   "observables": [
+    7
+   ]
+  },
+  {
+   "detectors": [
+    4896,
+    4990,
+    5002,
+    5011,
+    5019,
+    5031
+   ],
+   "observables": [
+    6,
+    7,
+    10,
+    11
+   ]
+  },
+  {
+   "detectors": [
+    4900,
+    4908,
+    4920,
+    4941,
+    5023,
+    5035
+   ],
+   "observables": [
+    4,
+    6,
+    7,
+    10,
+    11
+   ]
+  },
+  {
+   "detectors": [
+    4900,
+    4912,
+    4921,
+    4941,
+    4953,
+    4962
+   ],
+   "observables": [
+    2,
+    3,
+    4,
+    8,
+    11
+   ]
+  },
+  {
+   "detectors": [
+    4912,
+    4924,
+    4933,
+    4953,
+    4965,
+    4974
+   ],
+   "observables": [
+    6
+   ]
+  },
+  {
+   "detectors": [
+    4933,
+    4945,
+    4966,
+    4974,
+    4986,
+    4995
+   ],
+   "observables": [
+    5,
+    8,
+    9,
+    10,
+    11
+   ]
+  },
+  {
+   "detectors": [
+    4945,
+    4957,
+    4978,
+    4986,
+    4998,
+    5007
+   ],
+   "observables": []
+  },
+  {
+   "detectors": [
+    4978,
+    4990,
+    4999,
+    5007,
+    5019,
+    5028
+   ],
+   "observables": [
+    2,
+    3,
+    4,
+    7,
+    8,
+    10,
+    11
+   ]
+  }
+ ]
+}

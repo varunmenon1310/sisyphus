@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sisyphus-qec"
+version = "0.2.0"
+description = "Sisyphus: a fast circuit-level distance estimator for quantum codes (detector error models and CSS codes)"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{name = "Varun Menon"}]
+requires-python = ">=3.10"
+keywords = ["quantum error correction", "qLDPC", "circuit-level distance", "information-set decoding", "stim"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = ["numpy>=1.24", "numba>=0.58", "scipy>=1.10", "stim>=1.12"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/varunmenon1310/sisyphus"
+Repository = "https://github.com/varunmenon1310/sisyphus"
+
+[tool.setuptools]
+packages = ["sisyphus_qec"]
