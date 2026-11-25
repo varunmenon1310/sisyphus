@@ -546,9 +546,10 @@ def side_distance(check_H, dual_H, num_trials=20000, num_workers=1, seed=None,
                   num_workers islands (ignored when island_shots is given).
     time_limit    wall-clock budget in seconds (2026-11-04): a timer raises the
                   shared stop flag, every running island returns within one
-                  round and the result so far is returned. Needs num_workers
-                  >= 2 (with one in-process island the kernel holds the GIL and
-                  the timer cannot fire until it returns). None = no limit.
+                  round and the result so far is returned. Works for any
+                  num_workers: the island kernels release the GIL, so the timer
+                  also fires during an in-process island (num_workers = 1).
+                  None = no limit.
     compact       None = COMPACT; True runs the compact walker (rows stored on
                   the redundant columns, chain_compact.py), False the
                   full-width chain (chain_full.py).

@@ -324,7 +324,7 @@ are listed for completeness.
 - `num_trials` (default `20000`): total number of steps over all searches (per side for `css_distance`). One step = one move of one walk plus the search for light codewords. The column-window walk runs on top of this budget (5 steps per 4 counted).
 - `num_workers` (default `1`): searches run in parallel (one process each). `None` = all available CPU cores. `1` runs in the calling process.
 - `cutoff` (default `0`): stop as soon as a solution of weight `≤ cutoff` is found. `0` runs the whole budget, which also collects the set of minimum-weight solutions.
-- `time_limit` (default `None`): wall-clock budget in seconds (`side_distance`). The search returns the best result so far when it expires. Needs `num_workers ≥ 2`.
+- `time_limit` (default `None`): wall-clock budget in seconds (`side_distance`). The search returns the best result so far when it expires. Works for any `num_workers`, including `1`.
 - `seed` (default `None`): random seed (`None` = fresh randomness).
 - `island_shots` (default `None`): step budget of one search before it is replaced by a fresh one. `None` = an equal share of `num_trials` per worker, capped at 250,000.
 - `walkers_per_island` (default `4`): random walks per search: three learning walks with different settings and one non-learning walk, plus the column-window walk when `col_window` ≠ 0. Larger values reuse these settings in turn.
@@ -445,8 +445,12 @@ distance-finding methods [[7](#ref-7)], which used the same circuits. No bound w
 X basis of the [[756,16,34]] circuit; the best for its Z basis was 56.
 
 Sisyphus is also used by the Unitary Foundation [QEC Challenge Leaderboard](https://github.com/unitaryfoundation/qldpc-challenge) to bound the circuit-level distance of
-submissions ([blog post](https://unitary.foundation/posts/2026_qec_challenge/)). On several codes of the leaderboard it has found lower distances than previously reported; these
-results will be added to the table below once they are compiled.
+submissions ([blog post](https://unitary.foundation/posts/2026_qec_challenge/)). On several codes of the leaderboard it has found lower distances than previously reported. The first
+examples are in the [evidence table](https://github.com/unitaryfoundation/qldpc-challenge/pull/7264#evidence) of the pull request that adds Sisyphus to the leaderboard's
+circuit-distance check (under review). On seven entries with circuit models of 119,000 to 135,000
+faults, Sisyphus found undetected logical fault sets of weight 9 to 16 against claimed circuit
+distances of 16 to 19, each confirmed by the leaderboard's own checker. These results will be added
+to the table below once they are compiled.
 
 | circuit&nbsp;(dist-m4ri&nbsp;benchmark) | basis | previously&nbsp;reported | Sisyphus |
 |---|---|---|---|
@@ -543,8 +547,6 @@ the paper's circuits, Stim files and hardware data are in
   connected-cluster search of dist-m4ri.
 - Matrices are passed as dense arrays (one byte per entry before packing), which matters above
   about 10⁵ × 10⁵. A reduced circuit model of 13,230 × 129,276 takes about 1.7 GB.
-- `time_limit` needs `num_workers ≥ 2`; a single in-process search runs until its budget is
-  spent.
 - The first call compiles the kernels (about 30 s); later runs use the cache.
 
 ## Repository layout

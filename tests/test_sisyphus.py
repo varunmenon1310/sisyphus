@@ -169,3 +169,25 @@ def test_adaptive_scheduler_on_memory_circuit():
     assert any(a["name"].startswith("R") and a["islands"] > 0 for a in res.arms)
     ws = [h[1] for h in res.history]
     assert ws and ws[-1] == 5 and all(a > b for a, b in zip(ws, ws[1:]))
+
+
+@pytest.mark.parametrize("compact", [True, False])
+def test_time_limit_single_worker(compact):
+    """time_limit stops an in-process search (num_workers=1) inside a long island: the
+    island kernels release the GIL, so the timer thread can raise the stop flag. Before
+    this fix the single island below ran its full budget (minutes) and ignored the limit."""
+    stim = pytest.importorskip("stim")
+    import time
+    from sisyphus_qec import dem_to_matrices
+    circuit = stim.Circuit.generated("surface_code:rotated_memory_x", distance=5, rounds=10,
+                                     after_clifford_depolarization=0.001,
+                                     before_measure_flip_probability=0.001,
+                                     after_reset_flip_probability=0.001)
+    H, L, _ = dem_to_matrices(circuit.detector_error_model(decompose_errors=False))
+    side_distance(H, None, pair_rows=L, num_trials=200, num_workers=1, seed=1,
+                  compact=compact)                              # compile outside the timing
+    t0 = time.perf_counter()
+    res = side_distance(H, None, pair_rows=L, num_trials=10**9, island_shots=10**8,
+                        num_workers=1, seed=2, time_limit=1.0, compact=compact)
+    assert time.perf_counter() - t0 < 15.0
+    assert res.distance == 5

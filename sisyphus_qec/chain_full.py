@@ -304,7 +304,9 @@ def _mix_rows(A, row_wt, is_log, nw):
             nz = True
     is_log[i] = nz
 
-@njit(cache=True)
+# nogil: lets a timer thread raise `stop` while an in-process island runs
+# (side_distance(time_limit=..., num_workers=1))
+@njit(cache=True, nogil=True)
 def _run_island(A0, n_cols, nw, swaps_per_shot, restart_interval, shots, seed,
                 cutoff, etas, decays, margins, tourns, epss, migrate_interval,
                 migrate_boost, cw_max, lb_M, lb_p, greedy_passes, greedy_kicks,

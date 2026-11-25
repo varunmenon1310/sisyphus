@@ -661,7 +661,9 @@ def _reinforce_full(theta, cw_full, nw, inc):
 
 
 # ---------------------------------------------------------------- island
-@njit(cache=True)
+# nogil: lets a timer thread raise `stop` while an in-process island runs
+# (side_distance(time_limit=..., num_workers=1))
+@njit(cache=True, nogil=True)
 def _run_island_compact(Hp, colsig, n_cols, nw, rank, swaps_per_shot, restart_interval,
                         shots, seed, cutoff, etas, decays, margins, tourns, epss,
                         migrate_interval, migrate_boost, cw_max, lb_M, greedy_passes,
