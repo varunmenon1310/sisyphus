@@ -437,12 +437,9 @@ against 276&nbsp;s on Z and 1,452&nbsp;s against 1,641&nbsp;s on X.
 ### Fault sets lighter than previously reported
 
 Sisyphus found lighter fault sets than any reported before on circuits of the dist-m4ri benchmark
-set [[6](#ref-6)]: SI1000-noise memory circuits distributed with the Tesseract decoder
-[[13](#ref-13)] and uniform-noise memory circuits distributed with Relay-BP [[14](#ref-14)].
-Previous values are from the table of circuit-level distances in the dist-m4ri benchmark
-documentation [[6](#ref-6)] and from the published results data of the benchmark of
-distance-finding methods [[7](#ref-7)], which used the same circuits. No bound was reported for the
-X basis of the [[756,16,34]] circuit; the best for its Z basis was 56.
+set [[6](#ref-6)]. Previous values are from the table of circuit-level distances in the dist-m4ri benchmark
+documentation [[6](#ref-6)] and from the published benchmarking data from the Webster et al. 
+distance-finding methods paper [[7](#ref-7)], which used the same circuits. 
 
 Sisyphus is also used by the Unitary Foundation [QEC Challenge Leaderboard](https://github.com/unitaryfoundation/qldpc-challenge) to bound the circuit-level distance of
 submissions ([blog post](https://unitary.foundation/posts/2026_qec_challenge/)). On several codes of the leaderboard it has found lower distances than previously reported. The first
