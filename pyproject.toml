@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sisyphus-qec"
-version = "0.2.0"
+version = "0.2.1"
 description = "Sisyphus: a fast circuit-level distance estimator for quantum codes (detector error models and CSS codes)"
 readme = "README.md"
 license = "Apache-2.0"

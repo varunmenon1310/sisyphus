@@ -19,4 +19,4 @@ from .dem import dem_to_matrices, lift_columns, verify_fault_set
 
 __all__ = ["css_distance", "side_distance", "SideResult", "CssDistanceResult",
            "dem_to_matrices", "lift_columns", "verify_fault_set"]
-__version__ = "0.2.0"
+__version__ = "0.2.1"
